@@ -1,0 +1,39 @@
+-- Board and input type definitions
+--
+type Board = Grid(3,3, Player|Empty)
+type Input = Position
+
+
+-- Game setup
+--
+initialBoard : Board
+initialBoard(p) = Empty
+-- initialBoard(x, y) = Empty
+-- initialBoard(1, 1) = Empty
+
+goFirst : Player
+goFirst = A
+
+-- Game ending: game-over condition and game outcome
+--
+gameOver : Board -> Bool
+gameOver(b) = or(inARow(3,A,b), inARow(3,B,b), isFull(b))
+
+outcome : (Board,Player) -> Player|Tie
+outcome(b,p) = if inARow(3,A,b) then A else
+               if inARow(3,B,b) then B else
+               if isFull(b)     then Tie
+
+-- Predefined operations
+--
+isValid : (Player, Board, Position) -> Bool
+isValid(p,b,o) = if b(o) == Empty
+
+
+-- Game loop
+tryMove : (Player, Board, Position) -> (Player Board)
+tryMove(b, p, pos) = if isValid(p, b, pos) then (place(p, b, pos),next(p))
+                                         else (b,p)
+
+play : (Player,Board) -> Player|Tie
+play(a,b) = outcome(while not(gameOver(b)) do tryMove(b, p, Input))

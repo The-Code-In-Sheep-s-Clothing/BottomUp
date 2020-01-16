@@ -33,7 +33,10 @@ import Tokens
   gte                           { TokenGTE }
   symbol                        { TokenSym $$ }
 
-%left assign plus minus times div eq gt lt lte gte
+%left eq gt lt lte gte
+%left plus minus 
+%left times div
+%left assign
 
 %%
 List : Expr comma ListHelper { [$1] ++ $3 }
@@ -43,24 +46,24 @@ ListHelper : Expr comma ListHelper { [$1] ++ $3 }
 Args : Expr comma Args { [$1] ++ $3 }
      | Expr { [$1] }
 
-Binop : plus { Plus }
-      | minus { Minus }
-      | times { Times }
-      | div { Div }
-      | eq { EqualTo }
-      | gt { GreaterThan }
-      | lt { LessThan }
-      | lte { LessThanEqual }
-      | gte { GreaterThanEqual }
+Stmt : if Expr then Stmt else Stmt  { Conditional $2 $4 $6 }
+      | while Expr do Stmt          { While $2 $4 }
+      | Expr                        { $1 }
 
 Expr : int                          { EInt $1 }
      | symbol                       { ESymbol $1 }
      | lparen Expr rparen           { Paren $2 }
      | lparen List rparen           { Tuple $2 }
      | symbol lparen Args rparen    { FunctionApp $1 $3 }
-     | Expr Binop Expr              { Infix $1 $2 $3 }
-     | if Expr then Expr else Expr  { Conditional $2 $4 $6 }
-     | while Expr do Expr           { While $2 $4 }
+     | Expr plus Expr               { Infix $1 Plus $3 }
+     | Expr minus Expr              { Infix $1 Minus $3 }
+     | Expr times Expr              { Infix $1 Times $3 }
+     | Expr div Expr                { Infix $1 Div $3 }
+     | Expr eq Expr                 { Infix $1 EqualTo $3 }
+     | Expr gt Expr                 { Infix $1 GreaterThan $3 }
+     | Expr lt Expr                 { Infix $1 LessThan $3 }
+     | Expr lte Expr                { Infix $1 LessThanEqual $3 }
+     | Expr gte Expr                { Infix $1 GreaterThanEqual $3 }
 
 {
 

@@ -31,7 +31,7 @@ isValid(p,b,o) = if b(o) == Empty
 
 
 -- Game loop
-tryMove : (Player, Board, Position) -> (Player Board)
+tryMove : (Player, Board, Position) -> (Player, Board)
 tryMove(b, p, pos) = if isValid(p, b, pos) then (place(p, b, pos),next(p))
                                          else (b,p)
 

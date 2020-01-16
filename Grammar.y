@@ -46,9 +46,26 @@ ListHelper : Expr comma ListHelper { [$1] ++ $3 }
 Args : Expr comma Args { [$1] ++ $3 }
      | Expr { [$1] }
 
+Btype : symbol {Btype $1}
+Xtype : Btype pipe Xtype { Xtype [$1] ++ $3 }
+      | Btype { Xtype [$1] }
+Ttype1 : Xtype comma Ttype1 { Ttype [$1] ++ $3 }
+       | Xtype comma Xtype { Ttype [$1] ++ [$3] }
+Ttype : lparen Ttype1 rparen { $2 }
+Ptype : Ttype { Ttype' $1 }
+      | Xtype { Xtype' $1 }
+Ftype : Ptype arrow Ptype { Ftype $1 $3 }
+Type : Ptype { Ptype' $1 }
+     | Ftype { Ftype' $1 }
+
+Signature : symbol colon Type { Signature $1 $3}
+Equation : symbol lparen Args rparen eq Expr { Equation $1 $3 $6 }
+Equations : Equation Equations {[$1] ++ $2}
+          | Equation {[$1]}
+
 Stmt : if Expr then Stmt else Stmt  { Conditional $2 $4 $6 }
-      | while Expr do Stmt          { While $2 $4 }
-      | Expr                        { $1 }
+     | while Expr do Stmt           { While $2 $4 }
+     | Signature Equations          { Valdef $1 $2}
 
 Expr : int                          { EInt $1 }
      | symbol                       { ESymbol $1 }
@@ -70,9 +87,8 @@ Expr : int                          { EInt $1 }
 parseError :: [Token] -> a
 parseError _ = error "Parse error"
 
-data Valdef = Valdef Signature [Equation]
 data Signature = Signature String Type
-data Equation = Equation String Expr
+data Equation = Equation String [Expr] Expr
 
 data Binop = Plus
            | Minus
@@ -85,23 +101,23 @@ data Binop = Plus
            | GreaterThanEqual
            deriving Show
 
+data Stmt = Conditional Expr Expr Expr
+          | While Expr Expr
+          | Valdef Signature [Equation]
+
 data Expr = EInt Int
           | ESymbol String
           | Paren Expr
           | Tuple [Expr]
           | FunctionApp String [Expr]
           | Infix Expr Binop Expr
-          | Conditional Expr Expr Expr
-          | While Expr Expr
           | Empty
           deriving Show
 
-data Btype = Bool String
-           | TInt String
-           | TSymbol String
+data Btype = Btype String
            deriving Show
 
-data Xtype = Xtype Btype String
+data Xtype = Xtype [Btype]
            deriving Show
 
 data Ttype = Ttype [Xtype]

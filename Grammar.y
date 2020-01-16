@@ -33,7 +33,6 @@ import Tokens
   gte                           { TokenGTE }
   symbol                        { TokenSym $$ }
 
-%right in
 %left assign plus minus times div eq gt lt lte gte
 
 %%

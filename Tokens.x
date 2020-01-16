@@ -16,22 +16,22 @@ tokens :-
   else                          { \s -> TokenElse }
   while                         { \s -> TokenWhile }
   do                            { \s -> TokenDo }
-  \=                            { \s -> TokenAssign }
-  \+                            { \s -> TokenPlus }
-  \-                            { \s -> TokenMinus }
-  \*                            { \s -> TokenTimes }
-  \/                            { \s -> TokenDiv }
-  \(                            { \s -> TokenLParen }
-  \)                            { \s -> TokenRParen }
-  \|                            { \s -> TokenPipe }
-  \:                            { \s -> TokenColon }
-  \-\>                          { \s -> TokenArrow }
-  \,                            { \s -> TokenComa }
-  \=\=                          { \s -> TokenEQ }
-  \>                            { \s -> TokenGT }
-  \<                            { \s -> TokenLT }
-  \=\<                          { \s -> TokenLTE }
-  \=\>                          { \s -> TokenGTE }
+  "="                           { \s -> TokenAssign }
+  "+"                           { \s -> TokenPlus }
+  "-"                           { \s -> TokenMinus }
+  "*"                           { \s -> TokenTimes }
+  "/"                           { \s -> TokenDiv }
+  "("                           { \s -> TokenLParen }
+  ")"                           { \s -> TokenRParen }
+  "|"                           { \s -> TokenPipe }
+  ":"                           { \s -> TokenColon }
+  "->"                          { \s -> TokenArrow }
+  ","                           { \s -> TokenComa }
+  "=="                          { \s -> TokenEQ }
+  ">"                           { \s -> TokenGT }
+  "<"                           { \s -> TokenLT }
+  "=<"                          { \s -> TokenLTE }
+  "=>"                          { \s -> TokenGTE }
   $alpha [$alpha $digit \_ \']* { \s -> TokenSym s }
   $digit+                  { \s -> TokenInt (read s) }
   True                          { \s -> TokenBool True }

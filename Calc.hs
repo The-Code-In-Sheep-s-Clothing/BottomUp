@@ -2,7 +2,7 @@ module Main where
 import Grammar
 import Tokens
 
-type Env = String -> Expr
+type Env = String -> [Stmt]
 emptyEnv = error "Not found"
 envLookup s env = env s
 envBind s v env = (\s' -> if s == s' then v else env s)

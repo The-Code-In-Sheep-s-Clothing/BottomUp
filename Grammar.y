@@ -32,6 +32,7 @@ import Tokens
   lte                           { TokenLTE }
   gte                           { TokenGTE }
   symbol                        { TokenSym $$ }
+  functionDef                   { TokenFunctionDef $$ }
 
 %left eq gt lt lte gte
 %left plus minus 
@@ -42,12 +43,14 @@ import Tokens
 Stmts : Stmt Stmts {[$1] ++ $2}
       | {[]}
 
-List : Expr comma ListHelper { [$1] ++ $3 }
-ListHelper : Expr comma ListHelper { [$1] ++ $3 }
-           | Expr { [$1] }
+List : Variable comma ListHelper { [$1] ++ $3 }
+ListHelper : Variable comma ListHelper { [$1] ++ $3 }
+           | Variable { [$1] }
 
-Args : Expr comma Args { [$1] ++ $3 }
-     | Expr { [$1] }
+OptionalArgs : lparen Args rparen {$2}
+             | {[]}
+Args : Variable comma Args { [$1] ++ $3 }
+     | Variable { [$1] }
 
 Btype : symbol {Btype $1}
 Xtype : Btype pipe Xtype { let Xtype l = $3 in Xtype $ [$1] ++ l }
@@ -61,21 +64,22 @@ Ftype : Ptype arrow Ptype { Ftype $1 $3 }
 Type : Ptype { Ptype' $1 }
      | Ftype { Ftype' $1 }
 
-Signature : symbol colon Type { Signature $1 $3}
-Equation : symbol lparen Args rparen eq Expr { Equation $1 $3 $6 }
+Signature : functionDef Type { Signature $1 $2}
+Equation : symbol OptionalArgs assign WeakStmt { Equation $1 $2 $4 }
 Equations : Equation Equations {[$1] ++ $2}
           | Equation {[$1]}
 
-Stmt : if Expr then Expr else Expr  { Conditional $2 $4 $6 }
-     | while Expr do Expr           { While $2 $4 }
-     | Signature Equations          { Valdef $1 $2}
-     | type symbol assign Expr      { Typedef $2 $4 }
+Stmt : Signature Equations          { Valdef $1 $2}
+     | type symbol assign Type      { Typedef $2 $4 }
+     
 
-Expr : int                          { EInt $1 }
-     | symbol                       { ESymbol $1 }
+WeakStmt : if Expr then Expr else Expr  { Conditional $2 $4 $6 }
+         | while Expr do Expr           { While $2 $4 }
+         | Expr                         { SExpr $1 }
+
+Expr : Variable                     { $1 }
      | lparen Expr rparen           { Paren $2 }
      | lparen List rparen           { Tuple $2 }
-     | symbol lparen Args rparen    { FunctionApp $1 $3 }
      | Expr plus Expr               { Infix $1 Plus $3 }
      | Expr minus Expr              { Infix $1 Minus $3 }
      | Expr times Expr              { Infix $1 Times $3 }
@@ -86,6 +90,10 @@ Expr : int                          { EInt $1 }
      | Expr lte Expr                { Infix $1 LessThanEqual $3 }
      | Expr gte Expr                { Infix $1 GreaterThanEqual $3 }
 
+Variable : int                          { EInt $1 }
+         | symbol                       { ESymbol $1 }
+         | symbol lparen Args rparen    { FunctionApp $1 $3 }
+
 {
 
 parseError :: [Token] -> a
@@ -93,7 +101,7 @@ parseError _ = error "Parse error"
 
 data Signature = Signature String Type
                deriving Show
-data Equation = Equation String [Expr] Expr
+data Equation = Equation String [Expr] Stmt
               deriving Show
 
 data Binop = Plus
@@ -110,7 +118,8 @@ data Binop = Plus
 data Stmt = Conditional Expr Expr Expr
           | While Expr Expr
           | Valdef Signature [Equation]
-          | Typedef String Expr
+          | Typedef String Type
+          | SExpr Expr
           deriving Show
 
 data Expr = EInt Int

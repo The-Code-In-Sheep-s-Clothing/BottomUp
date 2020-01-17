@@ -24,7 +24,6 @@ tokens :-
   "("                           { \s -> TokenLParen }
   ")"                           { \s -> TokenRParen }
   "|"                           { \s -> TokenPipe }
-  ":"                           { \s -> TokenColon }
   "->"                          { \s -> TokenArrow }
   ","                           { \s -> TokenComa }
   "=="                          { \s -> TokenEQ }
@@ -32,6 +31,7 @@ tokens :-
   "<"                           { \s -> TokenLT }
   "=<"                          { \s -> TokenLTE }
   "=>"                          { \s -> TokenGTE }
+  $alpha [$alpha $digit \_ \']* $white* ":" { \s -> TokenFunctionDef $ tail (init s) } -- this is a little botched as it only strips the colon no the spaces
   $alpha [$alpha $digit \_ \']* { \s -> TokenSym s }
   $digit+                  { \s -> TokenInt (read s) }
   True                          { \s -> TokenBool True }
@@ -63,6 +63,7 @@ data Token = TokenType
            | TokenLTE
            | TokenGTE
            | TokenSym String
+           | TokenFunctionDef String
            | TokenInt Int
            | TokenBool Bool
            deriving (Eq,Show)

@@ -24,7 +24,9 @@ run e = eval e emptyEnv
 main :: IO ()
 main = do
     s <- getContents
-    let ast = parseCalc (scanTokens s)
+    let tokens = scanTokens s
+    print tokens
+    let ast = parseCalc (tokens)
     print ast
     --print (run ast)
     

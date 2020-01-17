@@ -39,6 +39,9 @@ import Tokens
 %left assign
 
 %%
+Stmts : Stmt Stmts {[$1] ++ $2}
+      | {[]}
+
 List : Expr comma ListHelper { [$1] ++ $3 }
 ListHelper : Expr comma ListHelper { [$1] ++ $3 }
            | Expr { [$1] }
@@ -62,9 +65,6 @@ Signature : symbol colon Type { Signature $1 $3}
 Equation : symbol lparen Args rparen eq Expr { Equation $1 $3 $6 }
 Equations : Equation Equations {[$1] ++ $2}
           | Equation {[$1]}
-
-Stmts : Stmt Stmts {[$1] ++ $2}
-      | {[]}
 
 Stmt : if Expr then Expr else Expr  { Conditional $2 $4 $6 }
      | while Expr do Expr           { While $2 $4 }
@@ -92,7 +92,9 @@ parseError :: [Token] -> a
 parseError _ = error "Parse error"
 
 data Signature = Signature String Type
+               deriving Show
 data Equation = Equation String [Expr] Expr
+              deriving Show
 
 data Binop = Plus
            | Minus
@@ -109,6 +111,7 @@ data Stmt = Conditional Expr Expr Expr
           | While Expr Expr
           | Valdef Signature [Equation]
           | Typedef String Expr
+          deriving Show
 
 data Expr = EInt Int
           | ESymbol String

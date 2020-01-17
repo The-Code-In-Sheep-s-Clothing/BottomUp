@@ -1,0 +1,6 @@
+*.hi
+*.o
+*.info
+Grammar.hs
+Tokens.hs
+Calc

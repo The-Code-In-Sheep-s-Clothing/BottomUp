@@ -1,6 +1,7 @@
 module Main where
 import Grammar
 import Tokens
+import Compiler
 
 type Env = String -> [Stmt]
 emptyEnv = error "Not found"
@@ -25,8 +26,9 @@ main :: IO ()
 main = do
     s <- getContents
     let tokens = scanTokens s
-    print tokens
+    -- print tokens
     let ast = parseCalc (tokens)
     print ast
+    writeFile "output.hs" (compile ast)
     --print (run ast)
     

@@ -16,6 +16,7 @@ tokens :-
   else                          { \s -> TokenElse }
   while                         { \s -> TokenWhile }
   do                            { \s -> TokenDo }
+  of                            { \s -> TokenOf }
   "="                           { \s -> TokenAssign }
   "+"                           { \s -> TokenPlus }
   "-"                           { \s -> TokenMinus }
@@ -31,7 +32,7 @@ tokens :-
   "<"                           { \s -> TokenLT }
   "=<"                          { \s -> TokenLTE }
   "=>"                          { \s -> TokenGTE }
-  $alpha [$alpha $digit \_ \']* $white* ":" { \s -> TokenFunctionDef $ tail (init s) } -- this is a little botched as it only strips the colon no the spaces
+  $alpha [$alpha $digit \_ \']* $white* ":" { \s -> TokenFunctionDef (init s) } -- this is a little botched as it only strips the colon no the spaces
   $alpha [$alpha $digit \_ \']* { \s -> TokenSym s }
   $digit+                  { \s -> TokenInt (read s) }
   True                          { \s -> TokenBool True }
@@ -46,6 +47,7 @@ data Token = TokenType
            | TokenElse
            | TokenWhile
            | TokenDo
+           | TokenOf
            | TokenAssign
            | TokenPlus
            | TokenMinus

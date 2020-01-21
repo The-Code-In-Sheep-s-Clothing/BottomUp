@@ -1,6 +1,6 @@
 -- Board and input type definitions
 --
-type Board = Grid(3,3, Player|Empty)
+type Board = Grid(3,3) of Player|Empty
 type Input = Position
 
 

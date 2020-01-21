@@ -14,6 +14,7 @@ import Tokens
   else                          { TokenElse }
   while                         { TokenWhile }
   do                            { TokenDo }
+  of                            { TokenOf }
   int                           { TokenInt $$ }
   assign                        { TokenAssign }
   plus                          { TokenPlus }
@@ -41,12 +42,13 @@ import Tokens
 
 %%
 Stmts : Stmt Stmts {[$1] ++ $2}
-      | {[]}
+      | Stmt {[$1]}
 
 List : Variable comma ListHelper { [$1] ++ $3 }
 ListHelper : Variable comma ListHelper { [$1] ++ $3 }
            | Variable { [$1] }
 
+-- TODO Can't parse tuples as args
 OptionalArgs : lparen Args rparen {$2}
              | {[]}
 Args : Variable comma Args { [$1] ++ $3 }
@@ -69,8 +71,9 @@ Equation : symbol OptionalArgs assign WeakStmt { Equation $1 $2 $4 }
 Equations : Equation Equations {[$1] ++ $2}
           | Equation {[$1]}
 
-Stmt : Signature Equations          { Valdef $1 $2}
-     | type symbol assign Type      { Typedef $2 $4 }
+Stmt : Signature Equations                        { Valdef $1 $2}
+     | type symbol assign Type                    { Typedef $2 $4 }
+     | type symbol assign FunctionApp of Type     { TypedefFunc $2 $4 $6}
      
 
 WeakStmt : if Expr then Expr else Expr  { Conditional $2 $4 $6 }
@@ -92,7 +95,9 @@ Expr : Variable                     { $1 }
 
 Variable : int                          { EInt $1 }
          | symbol                       { ESymbol $1 }
-         | symbol lparen Args rparen    { FunctionApp $1 $3 }
+         | FunctionApp                  { $1 }
+
+FunctionApp : symbol lparen Args rparen    { FunctionApp $1 $3 }
 
 {
 
@@ -119,6 +124,7 @@ data Stmt = Conditional Expr Expr Expr
           | While Expr Expr
           | Valdef Signature [Equation]
           | Typedef String Type
+          | TypedefFunc String Expr Type -- Used for type Board = Grid() of ...
           | SExpr Expr
           deriving Show
 

@@ -83,7 +83,6 @@ WeakStmt : if Expr then Expr else Expr  { Conditional $2 $4 $6 }
 
 Expr : Variable                     { $1 }
      | lparen Expr rparen           { Paren $2 }
-     | lparen List rparen           { Tuple $2 }
      | Expr plus Expr               { Infix $1 Plus $3 }
      | Expr minus Expr              { Infix $1 Minus $3 }
      | Expr times Expr              { Infix $1 Times $3 }
@@ -97,6 +96,7 @@ Expr : Variable                     { $1 }
 Variable : int                          { EInt $1 }
          | symbol                       { ESymbol $1 }
          | FunctionApp                  { $1 }
+         | lparen List rparen           { Tuple $2 }
 
 FunctionApp : symbol lparen Args rparen    { FunctionApp $1 $3 }
 

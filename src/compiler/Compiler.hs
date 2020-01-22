@@ -1,5 +1,5 @@
 module Compiler where
-import Grammar
+import Ast
 import Tokens
 
 compile :: [Stmt] -> String

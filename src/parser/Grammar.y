@@ -1,6 +1,7 @@
 {
 module Grammar where
 import Tokens
+import Ast
 }
 
 %name parseCalc
@@ -103,58 +104,4 @@ FunctionApp : symbol lparen Args rparen    { FunctionApp $1 $3 }
 
 parseError :: [Token] -> a
 parseError _ = error "Parse error"
-
-data Signature = Signature String Type
-               deriving Show
-data Equation = Equation String [Expr] Stmt
-              deriving Show
-
-data Binop = Plus
-           | Minus
-           | Times
-           | Div
-           | EqualTo
-           | LessThan
-           | GreaterThan
-           | LessThanEqual
-           | GreaterThanEqual
-           deriving Show
-
-data Stmt = Conditional Expr Expr Expr
-          | While Expr Expr
-          | Valdef Signature [Equation]
-          | Typedef String Type
-          | TypedefFunc String Expr Type -- Used for type Board = Grid() of ...
-          | SExpr Expr
-          deriving Show
-
-data Expr = EInt Int
-          | ESymbol String
-          | Paren Expr
-          | Tuple [Expr]
-          | FunctionApp String [Expr]
-          | Infix Expr Binop Expr
-          | Empty
-          deriving Show
-
-data Btype = Btype String
-           deriving Show
-
-data Xtype = Xtype [Btype]
-           deriving Show
-
-data Ttype = Ttype [Xtype]
-            deriving Show
-
-data Ptype = Xtype' Xtype
-           | Ttype' Ttype
-           deriving Show
-
-data Ftype = Ftype Ptype Ptype
-           deriving Show
-
-data Type = Ptype' Ptype
-          | Ftype' Ftype
-          deriving Show
-
 }

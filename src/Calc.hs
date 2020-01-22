@@ -2,6 +2,7 @@ module Main where
 import Grammar
 import Tokens
 import Compiler
+import Ast
 
 type Env = String -> [Stmt]
 emptyEnv = error "Not found"

@@ -1,8 +1,6 @@
-A very simple example of how to use Alex and Happy to build a language
-processor in Haskell.
+# Prerequisites
+* cabal install alex
+* cabal install happy
 
-To build this, you will need to install Alex and Happy. The easiest way to get
-them is via Hackage:
-
-$ cabal install alex
-$ cabal install happy
+# Build
+* run 'make' from inside src directory

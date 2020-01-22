@@ -1,5 +1,4 @@
-module BoGL_1 where
-
+module Builtins where
 
 import Prelude hiding (repeat,until)
 import qualified Prelude (repeat)
@@ -7,145 +6,13 @@ import Data.Array
 import Data.List (isInfixOf)
 import System.IO.Unsafe (unsafePerformIO)
 
-
-{-
-PREDEFINED TYPES
-  Player   = A | B
-  Board    = Array (Int,Int) Content
-  State    = (Board,Player)
-  Content  = Player | Empty
-  Position = (Int,Int)
-  Status   = Win Player | Tie | Turn Player
--}
-
 data Player   = A | B deriving (Eq,Show)
+data Grid     = Grid Int Int deriving(Show)
 type Board    = Array (Int,Int) Content
 type State    = (Board,Player)
 data Content  = Occupied Player | Empty deriving Eq
 type Position = (Int,Int)
 data Status   = Win Player | Tie | Turn Player
-
-
-instance Show Content where
-  show Empty        = "."
-  show (Occupied p) = show p
-
-instance Show Status where
-  show (Win p)  = show p++" wins"
-  show Tie      = "State is a tie"
-  show (Turn p) = "It\'s "++show p++"\'s turn"
-
-
-{-
-PREDEFINED GENERIC VALUES & FUNCTIONS
-  switch   :: Player -> Player
-  content  :: Board -> Position -> Content
-  isEmpty  :: Board -> Position -> Bool
-  place    :: Player -> Board -> Board
-  readMove :: Position
--}
-
-switch :: Player -> Player
-switch A = B
-switch B = A
-
-content :: Board -> Position -> Content
-content = (!)
-
-isEmpty :: Board -> Position -> Bool
-isEmpty b p = content b p == Empty
-
--- Unconditionally place a piece on a board
---
-place :: Player -> Position -> Board -> Board
-place a p b = b // [(p,Occupied a)]
-
-
---
--- Built-in Control Structure
---
-type KW = String
-
-until :: KW
-until = "until"
-
-repeat :: (State -> State) -> KW -> (State -> Bool) -> State -> State
-repeat f kw p g | kw /= "until" = error "Keyword until expeted!"
-                | p g'      = g'
-                | otherwise = repeat f until p g'
-                  where g' = f g
-
-{-
-GAME-DEPENDENT VALUES, FUNCTIONS & PREDICATES
-  initial  :: State
-  gameOver :: State -> Bool
-  outcome  :: State -> Status
-OPTIONAL (functions are predefined but can be overwritten)
-  input    :: State -> String -> Position
-  output   :: Content -> String
-  isValid  :: Position -> State -> Bool
-  turn     :: Position -> State -> State
--}
-
-data Game = G {
-     -- required
-     initial  :: State,
-     outcome  :: State -> Status,
-     -- optional
-     gameOver :: State -> Bool,
-     input    :: State -> String -> Position,
-     output   :: Content -> String,
-     isValid  :: Position -> State -> Bool,
-     turn     :: Position -> State -> State
-}
-
--- Generic default game definition
---
-game :: Game
-game = G {
-  -- required
-  initial  = undefined,
-  outcome  = undefined,
-  -- optional
-  input    = \_ -> read,   -- ignore state
-  output   = show,
-  gameOver = isFull,
-  isValid  = \p (b,_) -> b!p == Empty,
-  turn     = \p (b,x) -> (place x p b,switch x)
-}
-
-
-{-
-GAME-DEPENDENT, DERIVED FUNCTION DEFINITIONS
-  readMove :: State -> Position
-  tryMove  :: State -> State
-  loop     :: State -> State
-  play     :: State -> Status
--}
-
-readMoveIO :: Game -> State -> IO Position
-readMoveIO g s@(b,p) = do printBoard g b
-                          putStr ("Enter move for player "++show p++": ")
-                          l <- getLine
-                          return (input g s l)
-
--- readMove :: (Input a,Game state) => state -> a
-readMove :: Game -> State -> Position
-readMove g = unsafePerformIO . readMoveIO g
-
-tryMove :: Game -> State -> State
-tryMove g s | isValid g p s = turn g p s
-            | otherwise     = s
-              where p = readMove g s
-
--- Main game loop
---
-loop :: Game -> State -> State
-loop g = repeat (tryMove g) until (gameOver g)
-
-play :: Game -> Status
-play g = unsafePerformIO (printBoard g b >> return (outcome g final))
-         where final@(b,_) = loop g (initial g)
 
 
 --
@@ -161,6 +28,9 @@ board size c = listArray ((1,1),size) (Prelude.repeat c)
 byRows :: [[Content]] -> Board
 byRows rows = listArray ((1,1),size) (concat (reverse rows))
               where size = (length rows,length (head rows))
+
+getBoardContent :: Board -> Position -> Content
+getBoardContent b p = b!p
 
 -- Board size
 --
@@ -207,17 +77,17 @@ allRows b = rows b ++ cols b ++ diags b
 
 -- Printing a board
 --
-showRow :: Game -> Row -> String
-showRow g = concatMap (output g)
+-- showRow :: Game -> Row -> String
+-- showRow g = concatMap (output g)
 
-maxRows :: Board -> Int
-maxRows = fst . snd . bounds
+-- maxRows :: Board -> Int
+-- maxRows = fst . snd . bounds
 
-showBoard :: Game -> Board -> String
-showBoard g b = unlines [showRow g (row b r) | r <- reverse [1..maxRows b]]
+-- showBoard :: Game -> Board -> String
+-- showBoard g b = unlines [showRow g (row b r) | r <- reverse [1..maxRows b]]
 
-printBoard :: Game -> Board -> IO ()
-printBoard g = putStrLn . showBoard g
+-- printBoard :: Game -> Board -> IO ()
+-- printBoard g = putStrLn . showBoard g
 
 
 -- Conditions / board properties

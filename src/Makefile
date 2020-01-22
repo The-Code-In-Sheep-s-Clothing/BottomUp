@@ -10,6 +10,6 @@ Calc : Tokens.hs Grammar.hs Calc.hs
 	ghc --make Calc -i./compiler:./parser:./lexer
     
 clean:
-	rm -f Calc parser/Grammar.hs lexer/Tokens.hs *.o *.hi
+	rm -f Calc parser/Grammar.hs lexer/Tokens.hs *.o *.hi output.hs
 	rm -f */*.o */*.hi
     

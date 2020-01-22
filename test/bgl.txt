@@ -10,7 +10,7 @@ type Input = Position
 -- Game setup
 --
 initialBoard : Board
-initialBoard(positions) = Empty
+initialBoard(x, y) = Empty
 
 goFirst : Player
 goFirst = A
@@ -33,12 +33,12 @@ threeInARow(b) = or(inARow(3,A,b),inARow(3,B,b))
 -- Predefined operations
 --
 isValid : (Board,Position) -> Bool
-isValid(b,p) = if b(p) == Empty then True else False
+isValid(b,p) = if getBoardContent(b,p) == Empty then True else False
 
 
 -- Game loop
 --
-tryMove : (Player,Board) -> (Board,Player)
+tryMove : (Player,Board) -> (Player,Board)
 tryMove(p,b) = let pos = input in
                    if isValid(b,pos) then (place(p,b,pos),next(p))
                                      else (b,p)

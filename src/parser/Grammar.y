@@ -45,13 +45,12 @@ import Ast
 Stmts : Stmt Stmts {[$1] ++ $2}
       | Stmt {[$1]}
 
+OptionalArgs : lparen ListHelper rparen {Tuple $2}
+             | {[]}
 List : Variable comma ListHelper { [$1] ++ $3 }
 ListHelper : Variable comma ListHelper { [$1] ++ $3 }
            | Variable { [$1] }
 
--- TODO Can't parse tuples as args
-OptionalArgs : lparen Args rparen {$2}
-             | {[]}
 Args : Variable comma Args { [$1] ++ $3 }
      | Variable { [$1] }
 

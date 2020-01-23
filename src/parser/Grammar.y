@@ -45,59 +45,57 @@ import Ast
 Stmts : Stmt Stmts {[$1] ++ $2}
       | Stmt {[$1]}
 
-OptionalArgs : lparen ListHelper rparen {Tuple $2}
-             | {[]}
-List : Variable comma ListHelper { [$1] ++ $3 }
-ListHelper : Variable comma ListHelper { [$1] ++ $3 }
-           | Variable { [$1] }
+OptionalList  : lparen TupleList rparen                    { Tuple $2 }
+              | lparen Variable rparen                     { $2 }
+              |                                            { Empty }
+TupleList     : Variable comma List                        { [$1] ++ $3 }
+List          : Variable comma List                        { [$1] ++ $3 }
+              | Variable                                   { [$1] }
+   
+Btype         : symbol                                     {Btype $1}
+Xtype         : Btype pipe Xtype                           { let Xtype l = $3 in Xtype $ [$1] ++ l }
+              | Btype                                      { Xtype [$1] }
+Ttype1        : Xtype comma Ttype1                         { let Ttype l = $3 in Ttype $ [$1] ++ l }
+              | Xtype comma Xtype                          { Ttype $ [$1] ++ [$3] }
+Ttype         : lparen Ttype1 rparen                       { $2 }
+Ptype         : Ttype                                      { Ttype' $1 }
+              | Xtype                                      { Xtype' $1 }
+Ftype         : Ptype arrow Ptype                          { Ftype $1 $3 }
+Type          : Ptype                                      { Ptype' $1 }
+              | Ftype                                      { Ftype' $1 }
+   
+Signature     : functionDef Type                           { Signature $1 $2}
+Equation      : symbol OptionalList assign WeakStmt        { Equation $1 $2 $4 }
+Equations     : Equation Equations                         { [$1] ++ $2 }
+              | Equation                                   { [$1] }
 
-Args : Variable comma Args { [$1] ++ $3 }
-     | Variable { [$1] }
-
-Btype : symbol {Btype $1}
-Xtype : Btype pipe Xtype { let Xtype l = $3 in Xtype $ [$1] ++ l }
-      | Btype { Xtype [$1] }
-Ttype1 : Xtype comma Ttype1 { let Ttype l = $3 in Ttype $ [$1] ++ l }
-       | Xtype comma Xtype { Ttype $ [$1] ++ [$3] }
-Ttype : lparen Ttype1 rparen { $2 }
-Ptype : Ttype { Ttype' $1 }
-      | Xtype { Xtype' $1 }
-Ftype : Ptype arrow Ptype { Ftype $1 $3 }
-Type : Ptype { Ptype' $1 }
-     | Ftype { Ftype' $1 }
-
-Signature : functionDef Type { Signature $1 $2}
-Equation : symbol OptionalArgs assign WeakStmt { Equation $1 $2 $4 }
-Equations : Equation Equations {[$1] ++ $2}
-          | Equation {[$1]}
-
-Stmt : Signature Equations                        { Valdef $1 $2}
-     | type symbol assign Type                    { Typedef $2 $4 }
-     | type symbol assign FunctionApp of Type     { TypedefFunc $2 $4 $6}
+Stmt          : Signature Equations                        { Valdef $1 $2}
+              | type symbol assign Type                    { Typedef $2 $4 }
+              | type symbol assign FunctionApp of Type     { TypedefFunc $2 $4 $6 }
 
 
-WeakStmt : if Expr then Expr else Expr  { Conditional $2 $4 $6 }
-         | while Expr do Expr           { While $2 $4 }
-         | Expr                         { SExpr $1 }
-
-Expr : Variable                     { $1 }
-     | lparen Expr rparen           { Paren $2 }
-     | Expr plus Expr               { Infix $1 Plus $3 }
-     | Expr minus Expr              { Infix $1 Minus $3 }
-     | Expr times Expr              { Infix $1 Times $3 }
-     | Expr div Expr                { Infix $1 Div $3 }
-     | Expr eq Expr                 { Infix $1 EqualTo $3 }
-     | Expr gt Expr                 { Infix $1 GreaterThan $3 }
-     | Expr lt Expr                 { Infix $1 LessThan $3 }
-     | Expr lte Expr                { Infix $1 LessThanEqual $3 }
-     | Expr gte Expr                { Infix $1 GreaterThanEqual $3 }
-
-Variable : int                          { EInt $1 }
-         | symbol                       { ESymbol $1 }
-         | FunctionApp                  { $1 }
-         | lparen List rparen           { Tuple $2 }
-
-FunctionApp : symbol lparen Args rparen    { FunctionApp $1 $3 }
+WeakStmt      : if Expr then Expr else Expr                { Conditional $2 $4 $6 }
+              | while Expr do Expr                         { While $2 $4 }
+              | Expr                                       { SExpr $1 }
+              
+Expr          : Variable                                   { $1 }
+              | lparen Expr rparen                         { Paren $2 }
+              | Expr plus Expr                             { Infix $1 Plus $3 }
+              | Expr minus Expr                            { Infix $1 Minus $3 }
+              | Expr times Expr                            { Infix $1 Times $3 }
+              | Expr div Expr                              { Infix $1 Div $3 }
+              | Expr eq Expr                               { Infix $1 EqualTo $3 }
+              | Expr gt Expr                               { Infix $1 GreaterThan $3 }
+              | Expr lt Expr                               { Infix $1 LessThan $3 }
+              | Expr lte Expr                              { Infix $1 LessThanEqual $3 }
+              | Expr gte Expr                              { Infix $1 GreaterThanEqual $3 }
+              
+Variable      : int                                        { EInt $1 }
+              | symbol                                     { ESymbol $1 }
+              | FunctionApp                                { $1 }
+              | lparen TupleList rparen                    { Tuple $2 }
+              
+FunctionApp   : symbol lparen List rparen                  { FunctionApp $1 $3 }
 
 {
 

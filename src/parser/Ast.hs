@@ -28,7 +28,7 @@ data Expr = EInt Int
           | ESymbol String
           | Paren Expr
           | Tuple [Expr]
-          | FunctionApp String [Expr]
+          | FunctionApp String Expr
           | Infix Expr Binop Expr
           | Empty
           deriving Show

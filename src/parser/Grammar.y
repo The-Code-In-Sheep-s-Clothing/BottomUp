@@ -52,7 +52,7 @@ TupleList     : Variable comma List                        { [$1] ++ $3 }
 List          : Variable comma List                        { [$1] ++ $3 }
               | Variable                                   { [$1] }
    
-Btype         : symbol                                     {Btype $1}
+Btype         : symbol                                     { Btype $1 }
 Xtype         : Btype pipe Xtype                           { let Xtype l = $3 in Xtype $ [$1] ++ l }
               | Btype                                      { Xtype [$1] }
 Ttype1        : Xtype comma Ttype1                         { let Ttype l = $3 in Ttype $ [$1] ++ l }

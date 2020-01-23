@@ -32,6 +32,9 @@ byRows rows = listArray ((1,1),size) (concat (reverse rows))
 getBoardContent :: Board -> Position -> Content
 getBoardContent b p = b!p
 
+while :: (t -> Bool) -> (t -> t) -> t -> t
+while cond exe v = if (not . cond) v then while cond exe (exe v) else v
+
 -- Board size
 --
 size :: Board -> (Int,Int)

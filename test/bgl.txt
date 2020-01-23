@@ -18,8 +18,8 @@ goFirst = A
 
 -- Game ending: game-over condition and game outcome
 --
-gameOver : Board -> Bool
-gameOver(b) = or(threeInARow(b),isFull(b))
+gameOver : (Board,Player) -> Bool
+gameOver(b,p) = or(threeInARow(b),isFull(b))
 
 outcome : (Board,Player) -> Player|Tie
 outcome(b,p) = if inARow(3,A,b) then A else

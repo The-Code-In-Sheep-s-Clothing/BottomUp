@@ -6,39 +6,46 @@ module Tokens where
 
 $digit = 0-9
 $alpha = [a-zA-Z]
+@symbol = $alpha [$alpha $digit \_ \']*
 
 tokens :-
-  $white+                       ;
-  "--".*                        ;
-  type                          { \s -> TokenType }
-  if                            { \s -> TokenIf }
-  then                          { \s -> TokenThen }
-  else                          { \s -> TokenElse }
-  while                         { \s -> TokenWhile }
-  do                            { \s -> TokenDo }
-  of                            { \s -> TokenOf }
-  "="                           { \s -> TokenAssign }
-  "+"                           { \s -> TokenPlus }
-  "-"                           { \s -> TokenMinus }
-  "*"                           { \s -> TokenTimes }
-  "/"                           { \s -> TokenDiv }
-  "("                           { \s -> TokenLParen }
-  ")"                           { \s -> TokenRParen }
-  "|"                           { \s -> TokenPipe }
-  "->"                          { \s -> TokenArrow }
-  ","                           { \s -> TokenComa }
-  "=="                          { \s -> TokenEQ }
-  ">"                           { \s -> TokenGT }
-  "<"                           { \s -> TokenLT }
-  "=<"                          { \s -> TokenLTE }
-  "=>"                          { \s -> TokenGTE }
-  $alpha [$alpha $digit \_ \']* $white* ":" { \s -> TokenFunctionDef (init s) } -- this is a little botched as it only strips the colon no the spaces
-  $alpha [$alpha $digit \_ \']* { \s -> TokenSym s }
-  $digit+                  { \s -> TokenInt (read s) }
-  True                          { \s -> TokenBool True }
-  Frue                          { \s -> TokenBool False }
+  $white+                 ;
+  "--".*                  ;
+  type                    { \s -> TokenType }
+  if                      { \s -> TokenIf }
+  then                    { \s -> TokenThen }
+  else                    { \s -> TokenElse }
+  while                   { \s -> TokenWhile }
+  do                      { \s -> TokenDo }
+  of                      { \s -> TokenOf }
+  "="                     { \s -> TokenAssign }
+  "+"                     { \s -> TokenPlus }
+  "-"                     { \s -> TokenMinus }
+  "*"                     { \s -> TokenTimes }
+  "/"                     { \s -> TokenDiv }
+  "("                     { \s -> TokenLParen }
+  ")"                     { \s -> TokenRParen }
+  "|"                     { \s -> TokenPipe }
+  "->"                    { \s -> TokenArrow }
+  ","                     { \s -> TokenComa }
+  "=="                    { \s -> TokenEQ }
+  ">"                     { \s -> TokenGT }
+  "<"                     { \s -> TokenLT }
+  "=<"                    { \s -> TokenLTE }
+  "=>"                    { \s -> TokenGTE }
+  @symbol $white* ":"     { \s -> TokenFunctionDef (stripFirstWord s) }
+  @symbol                 { \s -> TokenSym s }
+  $digit+                 { \s -> TokenInt (read s) }
+  True                    { \s -> TokenBool True }
+  Frue                    { \s -> TokenBool False }
 
 {
+
+-- there might be a library for this, but I dont know how to include
+stripFirstWord          :: String -> String
+stripFirstWord (' ':xs) = ""
+stripFirstWord (x:xs)   = x : stripFirstWord xs
+stripFirstWord _        = ""
 
 -- The token type:
 data Token = TokenType

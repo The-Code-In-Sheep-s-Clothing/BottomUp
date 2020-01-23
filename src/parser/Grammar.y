@@ -37,7 +37,7 @@ import Ast
   functionDef                   { TokenFunctionDef $$ }
 
 %left eq gt lt lte gte
-%left plus minus 
+%left plus minus
 %left times div
 %left assign
 
@@ -75,7 +75,7 @@ Equations : Equation Equations {[$1] ++ $2}
 Stmt : Signature Equations                        { Valdef $1 $2}
      | type symbol assign Type                    { Typedef $2 $4 }
      | type symbol assign FunctionApp of Type     { TypedefFunc $2 $4 $6}
-     
+
 
 WeakStmt : if Expr then Expr else Expr  { Conditional $2 $4 $6 }
          | while Expr do Expr           { While $2 $4 }

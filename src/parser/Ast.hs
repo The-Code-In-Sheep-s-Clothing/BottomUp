@@ -2,7 +2,7 @@ module Ast where
 
 data Signature = Signature String Type
                deriving Show
-data Equation = Equation String [Expr] Stmt
+data Equation = Equation String Expr Stmt
               deriving Show
 
 data Binop = Plus

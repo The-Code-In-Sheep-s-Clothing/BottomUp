@@ -1,4 +1,5 @@
 module Compiler where
+import Data.List
 import Ast
 import Tokens
 
@@ -28,9 +29,7 @@ compile_valdef (Valdef (Signature "initialBoard " t) ((Equation s e st):es)) =
     s ++ " :: Grid -> " ++ compile_type t ++ "\n" ++
     "initialBoard (Grid x y) = board (x, y)" ++ compile_stmt st
 compile_valdef (Valdef (Signature s t) e) = 
-    s ++ " :: " ++ compile_type t ++ "\n" ++ valdef_loop e
-valdef_loop [] = ""
-valdef_loop (e:es) = compile_equation e ++ "\n" ++ valdef_loop es
+    s ++ " :: " ++ compile_type t ++ "\n" ++ intercalate "\n" (map compile_equation e)
 
 -- Function defintion equations
 compile_equation :: Equation -> String
@@ -38,7 +37,7 @@ compile_equation (Equation s e st) = s ++ " " ++ equation_loop e ++ "=" ++ compi
 equation_loop [] = ""
 equation_loop (e:es) = "(" ++ compile_expr e ++ ")" ++ equation_loop es
 
--- Type/data declarations (board, input)
+-- Type/data declarations (bo/equationard, input)
 compile_typedef :: Stmt -> String
 compile_typedef (TypedefFunc "Board" e t) = 
     "data Content = " ++
@@ -62,19 +61,11 @@ compile_ftype :: Ftype -> String
 compile_ftype (Ftype p1 p2) = compile_ptype p1 ++ "->" ++ compile_ptype p2
 
 compile_xtype :: Xtype -> String
-compile_xtype (Xtype (x:xs)) =
-    if null xs then
-        compile_btype x
-    else
-        compile_btype x ++ "|" ++ compile_xtype (Xtype xs)
+compile_xtype (Xtype b) = intercalate "|" (map compile_btype b)
 
 compile_ttype :: Ttype -> String
 compile_ttype (Ttype x) = "(" ++ loop_ttype x ++ ")"
-loop_ttype (x:xs) =
-    if null xs then
-        compile_xtype x
-    else
-        compile_xtype x ++ "," ++ loop_ttype xs
+loop_ttype x = intercalate "," (map compile_xtype x)
 
 compile_btype :: Btype -> String
 compile_btype (Btype b) = b
@@ -83,18 +74,14 @@ compile_expr :: Expr -> String
 compile_expr (EInt i) = show i
 compile_expr (ESymbol s) = s
 compile_expr (Paren e) = "(" ++ compile_expr e ++ ")"
-compile_expr (Tuple t) = "(" ++ loop_expr_tuple t ++ ")"
+compile_expr (Tuple t) = "(" ++ intercalate "," (map compile_expr t) ++ "])" ++ ")"
 -- Need to check if it's a built in function with a different signature (or,and,...)
 compile_expr (FunctionApp s e) 
-    | s == "or" || s == "and" = "(" ++ s ++ " [" ++ loop_expr_tuple e ++ "])"
+    | s == "or" || s == "and" = "(" ++ s ++ " [" ++ 
+    intercalate "," (map compile_expr e) ++ "])"
     | otherwise = "(" ++ s ++ " " ++ loop_expr_func e ++ ")"
 compile_expr (Infix e1 b e2) = compile_expr e1 ++ compile_binop b ++ compile_expr e2
 compile_expr (Empty) = ""
-loop_expr_tuple (e:es) = 
-    if null es then
-        compile_expr e
-    else
-        compile_expr e ++ "," ++ loop_expr_tuple es
 loop_expr_func (e:es) =
     if null es then
         "(" ++ compile_expr e ++ ")"

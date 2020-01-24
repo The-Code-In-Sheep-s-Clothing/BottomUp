@@ -25,7 +25,7 @@ while_compose _ = ""
 -- Function type definition
 -- TODO accept different types of arguments for initialBoard
 compile_valdef :: Stmt -> String
-compile_valdef (Valdef (Signature "initialBoard " t) ((Equation s e st):es)) =
+compile_valdef (Valdef (Signature "initialBoard" t) ((Equation s e st):es)) =
     s ++ " :: Grid -> " ++ compile_type t ++ "\n" ++
     "initialBoard (Grid x y) = board (x, y)" ++ compile_stmt st
 compile_valdef (Valdef (Signature s t) e) = 
@@ -72,12 +72,16 @@ compile_expr :: Expr -> String
 compile_expr (EInt i) = show i
 compile_expr (ESymbol s) = s
 compile_expr (Paren e) = "(" ++ compile_expr e ++ ")"
-compile_expr (Tuple t) = "(" ++ intercalate "," (map compile_expr t) ++ "])" ++ ")"
+compile_expr (Tuple t) = "(" ++ intercalate "," (map compile_expr t) ++ ")"
 -- Need to check if it's a built in function with a different signature (or,and,...)
 compile_expr (FunctionApp s (Tuple e)) 
     | s == "or" || s == "and" = "(" ++ s ++ " [" ++ 
     intercalate "," (map compile_expr e) ++ "])"
     | otherwise = "(" ++ s ++ " " ++ loop_expr_func e ++ ")"
+compile_expr (FunctionApp s e)
+    | s == "or" || s == "and" = "(" ++ s ++ " [" ++ 
+    compile_expr e ++ "])"
+    | otherwise = "(" ++ s ++ " " ++ compile_expr e ++ ")"
 compile_expr (Infix e1 b e2) = compile_expr e1 ++ compile_binop b ++ compile_expr e2
 compile_expr (Empty) = ""
 loop_expr_func (e:es) =

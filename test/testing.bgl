@@ -8,3 +8,6 @@ goFirst = A
 
 threeInARow : Board -> Bool
 threeInARow(b) = or(inARow(3,A,b),inARow(3,B,b))
+
+gameOver : (Board,Player) -> Bool
+gameOver(b,p) = or(threeInARow(b),isFull(b))

@@ -7,6 +7,3 @@ initialBoard(x, y) = Empty
 
 goFirst : Player
 goFirst = A
-
-threeInARow : Board -> Bool
-threeInARow(b) = or(inARow(3,A,b),inARow(3,B,b))

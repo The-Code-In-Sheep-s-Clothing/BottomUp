@@ -95,7 +95,7 @@ Variable      : int                                        { EInt $1 }
               | FunctionApp                                { $1 }
               | lparen TupleList rparen                    { Tuple $2 }
               
-FunctionApp   : symbol lparen OptionalList rparen                  { FunctionApp $1 $3 }
+FunctionApp   : symbol OptionalList                  { FunctionApp $1 $2 }
 
 {
 

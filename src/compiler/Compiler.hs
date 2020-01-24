@@ -16,10 +16,10 @@ compile_stmt (Valdef s e) = compile_valdef (Valdef s e)
 compile_stmt (SExpr e) = compile_expr e
 compile_stmt (Conditional e1 e2 e3) = 
     "if " ++ compile_expr e1 ++ " then " ++ compile_expr e2 ++ " else " ++ compile_expr e3
-compile_stmt (While (FunctionApp f1 e1) (FunctionApp f2 e)) =
+compile_stmt (While (FunctionApp f1 (Tuple e1)) (FunctionApp f2 t@(Tuple e))) =
     "while " ++ "(" ++ f1 ++ while_compose e1 ++ ")" ++ " " ++ 
-    "(" ++ f2  ++ ")"++ " " ++ compile_expr (Tuple e)
-while_compose [(FunctionApp f e)] = ". " ++ f ++ while_compose e
+    "(" ++ f2  ++ ")"++ " " ++ compile_expr t 
+while_compose [(FunctionApp f (Tuple e))] = ". " ++ f ++ while_compose e
 while_compose _ = ""
 
 -- Function type definition
@@ -33,9 +33,7 @@ compile_valdef (Valdef (Signature s t) e) =
 
 -- Function defintion equations
 compile_equation :: Equation -> String
-compile_equation (Equation s e st) = s ++ " " ++ equation_loop e ++ "=" ++ compile_stmt st
-equation_loop [] = ""
-equation_loop (e:es) = "(" ++ compile_expr e ++ ")" ++ equation_loop es
+compile_equation (Equation s e st) = s ++ " " ++ compile_expr e ++ "=" ++ compile_stmt st
 
 -- Type/data declarations (bo/equationard, input)
 compile_typedef :: Stmt -> String
@@ -76,7 +74,7 @@ compile_expr (ESymbol s) = s
 compile_expr (Paren e) = "(" ++ compile_expr e ++ ")"
 compile_expr (Tuple t) = "(" ++ intercalate "," (map compile_expr t) ++ "])" ++ ")"
 -- Need to check if it's a built in function with a different signature (or,and,...)
-compile_expr (FunctionApp s e) 
+compile_expr (FunctionApp s (Tuple e)) 
     | s == "or" || s == "and" = "(" ++ s ++ " [" ++ 
     intercalate "," (map compile_expr e) ++ "])"
     | otherwise = "(" ++ s ++ " " ++ loop_expr_func e ++ ")"

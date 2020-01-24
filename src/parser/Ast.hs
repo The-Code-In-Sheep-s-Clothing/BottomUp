@@ -27,8 +27,8 @@ data Stmt = Conditional Expr Expr Expr
 data Expr = EInt Int
           | ESymbol String
           | Paren Expr
-          | Tuple [Expr]
-          | FunctionApp String [Expr]
+          | Tuple Expr
+          | FunctionApp String Expr
           | Infix Expr Binop Expr
           | Empty
           deriving Show

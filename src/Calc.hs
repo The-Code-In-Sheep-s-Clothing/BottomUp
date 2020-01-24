@@ -30,6 +30,6 @@ main = do
     -- print tokens
     let ast = parseCalc (tokens)
     print ast
-    writeFile "output.hs" (compile ast)
+    --writeFile "output.hs" (compile ast)
     --print (run ast)
     

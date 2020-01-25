@@ -16,10 +16,10 @@ compile_stmt (Valdef s e) = compile_valdef (Valdef s e)
 compile_stmt (SExpr e) = compile_expr e
 compile_stmt (Conditional e1 e2 e3) = 
     "if " ++ compile_expr e1 ++ " then " ++ compile_expr e2 ++ " else " ++ compile_expr e3
-compile_stmt (While (FunctionApp f1 (Tuple e1)) (FunctionApp f2 t@(Tuple e))) =
+compile_stmt (While (FunctionApp f1 e1) (FunctionApp f2 e2)) =
     "while " ++ "(" ++ f1 ++ while_compose e1 ++ ")" ++ " " ++ 
-    "(" ++ f2  ++ ")"++ " " ++ compile_expr t 
-while_compose [(FunctionApp f (Tuple e))] = ". " ++ f ++ while_compose e
+    "(" ++ f2  ++ ")"++ " " ++ compile_expr e2 
+while_compose (FunctionApp f e) = ". " ++ f ++ while_compose e
 while_compose _ = ""
 
 -- Function type definition

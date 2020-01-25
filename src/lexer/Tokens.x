@@ -63,7 +63,6 @@ data Token = TokenType
            | TokenLParen
            | TokenRParen
            | TokenPipe
-           | TokenColon
            | TokenArrow
            | TokenComa
            | TokenEQ

@@ -25,7 +25,6 @@ import Ast
   lparen                        { TokenLParen }
   rparen                        { TokenRParen }
   pipe                          { TokenPipe }
-  colon                         { TokenColon }
   arrow                         { TokenArrow }
   comma                         { TokenComa }
   eq                            { TokenEQ }

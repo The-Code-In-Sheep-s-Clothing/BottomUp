@@ -17,6 +17,7 @@ data Binop = Plus
            deriving Show
 
 data Stmt = Conditional Expr Stmt Stmt
+          | Let String Expr Stmt
           | While Expr Expr
           | Valdef Signature [Equation]
           | Typedef String Type

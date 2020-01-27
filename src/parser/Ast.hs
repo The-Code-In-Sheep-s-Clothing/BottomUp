@@ -16,7 +16,7 @@ data Binop = Plus
            | GreaterThanEqual
            deriving Show
 
-data Stmt = Conditional Stmt Stmt Stmt
+data Stmt = Conditional Expr Stmt Stmt
           | While Stmt Stmt
           | Valdef Signature [Equation]
           | Typedef String Type

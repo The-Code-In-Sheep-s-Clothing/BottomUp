@@ -75,7 +75,7 @@ Stmt          : Signature Equations                                       { Vald
               | type symbol assign FunctionApp of Type                    { TypedefFunc $2 $4 $6 }
                 
                 
-WeakStmt      : if WeakStmt then WeakStmt else WeakStmt                   { Conditional $2 $4 $6 }
+WeakStmt      : if Expr then WeakStmt else WeakStmt                   { Conditional $2 $4 $6 }
               | while WeakStmt do WeakStmt                                { While $2 $4 }
               | Expr                                                      { SExpr $1 }
                               

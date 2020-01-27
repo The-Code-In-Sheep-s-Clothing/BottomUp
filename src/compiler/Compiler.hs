@@ -1,10 +1,13 @@
 module Compiler where
 import Data.List
+import Data.Map (Map)
+import qualified Data.Map as Map
 import Ast
-import Tokens
+
+type Env = Map String String
 
 compile :: [Stmt] -> String
-compile x = "import Builtins\n" ++ compile_loop x ++ 
+compile x = "import Builtins\n" ++ "data Outcome = P Player | Tie\n" ++ compile_loop x ++ 
     "main = return ()"
 compile_loop [] = ""
 compile_loop (x:xs) = compile_stmt x ++ "\n" ++ compile_loop xs
@@ -14,8 +17,8 @@ compile_stmt (Typedef s t) = compile_typedef (Typedef s t)
 compile_stmt (TypedefFunc s e t ) = compile_typedef (TypedefFunc s e t)
 compile_stmt (Valdef s e) = compile_valdef (Valdef s e)
 compile_stmt (SExpr e) = compile_expr e
-compile_stmt (Conditional e1 e2 e3) = 
-    "if " ++ compile_expr e1 ++ " then " ++ compile_expr e2 ++ " else " ++ compile_expr e3
+compile_stmt (Conditional e s1 s2) = 
+    "if " ++ compile_expr e ++ " then " ++ compile_stmt s1 ++ " else " ++ compile_stmt s2
 compile_stmt (While (FunctionApp f1 e1) (FunctionApp f2 e2)) =
     "while " ++ "(" ++ f1 ++ while_compose e1 ++ ")" ++ " " ++ 
     "(" ++ f2  ++ ")"++ " " ++ compile_expr e2 
@@ -59,6 +62,7 @@ compile_ftype :: Ftype -> String
 compile_ftype (Ftype p1 p2) = compile_ptype p1 ++ "->" ++ compile_ptype p2
 
 compile_xtype :: Xtype -> String
+compile_xtype (Xtype [Btype "Player", Btype "Tie"]) = "Outcome"
 compile_xtype (Xtype b) = intercalate "|" (map compile_btype b)
 
 compile_ttype :: Ttype -> String
@@ -70,7 +74,11 @@ compile_btype (Btype b) = b
 
 compile_expr :: Expr -> String
 compile_expr (EInt i) = show i
-compile_expr (ESymbol s) = s
+-- Hardcoding the possible players for now (TODO don't do this)
+compile_expr (ESymbol s) 
+    | s == "A" = "P A"
+    | s == "B" = "P B"
+    | otherwise = s
 compile_expr (Paren e) = "(" ++ compile_expr e ++ ")"
 compile_expr (Tuple t) = "(" ++ intercalate "," (map compile_expr t) ++ ")"
 -- Need to check if it's a built in function with a different signature (or,and,...)

@@ -18,6 +18,8 @@ tokens :-
   while                   { \s -> TokenWhile }
   do                      { \s -> TokenDo }
   of                      { \s -> TokenOf }
+  let                     { \s -> TokenLet }
+  in                      { \s -> TokenIn }
   "="                     { \s -> TokenAssign }
   "+"                     { \s -> TokenPlus }
   "-"                     { \s -> TokenMinus }
@@ -55,6 +57,8 @@ data Token = TokenType
            | TokenWhile
            | TokenDo
            | TokenOf
+           | TokenLet
+           | TokenIn
            | TokenAssign
            | TokenPlus
            | TokenMinus

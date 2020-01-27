@@ -16,6 +16,8 @@ import Ast
   while                         { TokenWhile }
   do                            { TokenDo }
   of                            { TokenOf }
+  let                           { TokenLet }
+  in                            { TokenIn }
   int                           { TokenInt $$ }
   assign                        { TokenAssign }
   plus                          { TokenPlus }
@@ -75,8 +77,9 @@ Stmt          : Signature Equations                                       { Vald
               | type symbol assign FunctionApp of Type                    { TypedefFunc $2 $4 $6 }
                 
                 
-WeakStmt      : if Expr then WeakStmt else WeakStmt                   { Conditional $2 $4 $6 }
-              | while WeakStmt do WeakStmt                                { While $2 $4 }
+WeakStmt      : if Expr then WeakStmt else WeakStmt                       { Conditional $2 $4 $6 }
+              | let symbol assign Expr in WeakStmt                        { Let $2 $4 $6 }
+              | while Expr do Expr                                        { While $2 $4 }
               | Expr                                                      { SExpr $1 }
                               
 Expr          : Variable                                                  { $1 }

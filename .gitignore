@@ -5,3 +5,5 @@ Grammar.hs
 Tokens.hs
 Calc
 output.hs
+dist
+dist/*

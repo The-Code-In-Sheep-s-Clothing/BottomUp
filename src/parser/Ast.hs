@@ -16,8 +16,8 @@ data Binop = Plus
            | GreaterThanEqual
            deriving Show
 
-data Stmt = Conditional Expr Expr Expr
-          | While Expr Expr
+data Stmt = Conditional Stmt Stmt Stmt
+          | While Stmt Stmt
           | Valdef Signature [Equation]
           | Typedef String Type
           | TypedefFunc String Expr Type -- Used for type Board = Grid() of ...

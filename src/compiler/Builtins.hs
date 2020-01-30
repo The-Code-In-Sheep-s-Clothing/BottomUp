@@ -66,8 +66,8 @@ getInt = do
     i <- getLine
     return $ read i
 
-input :: Position
-input = (unsafePerformIO getInt, unsafePerformIO getInt)
+input :: [Int] -> Position
+input _ = (unsafePerformIO getInt, unsafePerformIO getInt)
 
 -- Board size
 --

@@ -34,6 +34,22 @@ byRows rows = listArray ((1,1),size) (concat (reverse rows))
 getBoardContent :: (Board, Position) -> Content
 getBoardContent (b,p) = b!p
 
+printBoard :: Board -> String
+printBoard b = printBoardHelp b (bounds b)
+
+printBoardHelp :: Board -> ((Int, Int), (Int, Int)) -> String
+printBoardHelp board ((a, b), (c, d)) = spaceString (board!(a, b)) ++ 
+					if (a < c || b < d) then
+						if(b < d) then
+						printBoardHelp board ((a, b+1), (c, d)) 
+						else "\n" ++ printBoardHelp board ((a+1, 1), (c, d))
+					else ""
+
+spaceString :: Content -> String
+spaceString Empty = "Empty "
+spaceString (Occupied A) = "A     "
+spaceString (Occupied B) = "B     "
+
 while :: (t -> Bool) -> (t -> t) -> t -> t
 while cond exe v = if (cond) v then while cond exe (exe v) else v
 

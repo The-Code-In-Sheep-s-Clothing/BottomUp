@@ -94,6 +94,7 @@ compile_expr :: Expr -> String
 compile_expr (EInt i) = show i
 compile_expr (ESymbol s) 
     | s == "initialBoard" = "initialBoard board_size" 
+    | s == "input" = "input []"
     | otherwise = s
 compile_expr (Paren e) = "(" ++ compile_expr e ++ ")"
 compile_expr (Tuple t) = "(" ++ intercalate "," (map compile_expr t) ++ ")"

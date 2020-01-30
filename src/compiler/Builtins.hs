@@ -5,14 +5,16 @@ import qualified Prelude (repeat)
 import Data.Array
 import Data.List (isInfixOf)
 import System.IO.Unsafe (unsafePerformIO)
+import Data.Char (digitToInt)
+import Debug.Trace
+import System.IO
 
 data Player   = A | B deriving (Eq,Show)
-data Grid     = Grid Int Int deriving(Show)
+data Grid     = Grid (Int,Int) deriving(Show)
 type Board    = Array (Int,Int) Content
 type State    = (Board,Player)
-data Content  = Occupied Player | Empty deriving Eq
+data Content  = Occupied Player | Empty deriving (Show,Eq)
 type Position = (Int,Int)
-data Status   = Win Player | Tie | Turn Player
 
 
 --
@@ -29,11 +31,27 @@ byRows :: [[Content]] -> Board
 byRows rows = listArray ((1,1),size) (concat (reverse rows))
               where size = (length rows,length (head rows))
 
-getBoardContent :: Board -> Position -> Content
-getBoardContent b p = b!p
+getBoardContent :: (Board, Position) -> Content
+getBoardContent (b,p) = b!p
 
 while :: (t -> Bool) -> (t -> t) -> t -> t
-while cond exe v = if (not . cond) v then while cond exe (exe v) else v
+while cond exe v = if (cond) v then while cond exe (exe v) else v
+
+next :: Player -> Player
+next A = B
+next B = A
+
+place :: (Player, Board, Position) -> Board
+place (p, b, pos) = b // [(pos, Occupied p)]
+
+getInt :: IO Int
+getInt = do
+    hFlush stdout
+    i <- getLine
+    return $ read i
+
+input :: Position
+input = (unsafePerformIO getInt, unsafePerformIO getInt)
 
 -- Board size
 --
@@ -119,5 +137,5 @@ n `ofKind` p = map Occupied (replicate n p)
 -- fourAs = 4 `ofKind` A
 -- fourBs = 4 `ofKind` B
 
-inARow :: Int -> Player -> BoardProperty
-inARow n p = any (isInfixOf (n `ofKind` p)) . allRows
+inARow :: (Int,Player,Board) -> Bool
+inARow (n,p,b) = (any (isInfixOf (n `ofKind` p)) . allRows) b

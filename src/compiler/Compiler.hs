@@ -15,14 +15,15 @@ compile_loop (x:xs) = compile_stmt x ++ "\n" ++ compile_loop xs
 compile_stmt :: Stmt -> String
 compile_stmt (Typedef s t) = compile_typedef (Typedef s t)
 compile_stmt (TypedefFunc s e t ) = compile_typedef (TypedefFunc s e t)
-compile_stmt (Valdef s e) = compile_valdef (Valdef s e)
+compile_stmt (Valdef s e) = compile_valdef (Valdef s e) ++ "\n"
 compile_stmt (SExpr e) = compile_expr e
+compile_stmt (Let s e st) = "let " ++ s ++ "=" ++ compile_expr e ++ " in " ++ compile_stmt st
 compile_stmt (Conditional e s1 s2) = 
     "if " ++ compile_expr e ++ " then " ++ compile_stmt s1 ++ " else " ++ compile_stmt s2
 compile_stmt (While (FunctionApp f1 e1) (FunctionApp f2 e2)) =
     "while " ++ "(" ++ f1 ++ while_compose e1 ++ ")" ++ " " ++ 
     "(" ++ f2  ++ ")"++ " " ++ compile_expr e2 
-while_compose (FunctionApp f e) = ". " ++ f ++ while_compose e
+while_compose (FunctionApp f e) = "." ++ f ++ while_compose e
 while_compose _ = ""
 
 -- Function type definition
@@ -30,7 +31,10 @@ while_compose _ = ""
 compile_valdef :: Stmt -> String
 compile_valdef (Valdef (Signature "initialBoard" t) ((Equation s e st):es)) =
     s ++ " :: Grid -> " ++ compile_type t ++ "\n" ++
-    "initialBoard (Grid x y) = board (x, y)" ++ compile_stmt st
+    "initialBoard (Grid (x,y)) = board (x, y)" ++ compile_stmt st
+-- Hardcoding this for now (TODO)
+compile_valdef (Valdef (Signature "outcome" t) e) = 
+    "outcome" ++ " :: " ++ compile_type t ++ "\n" ++ intercalate "\n" (map compile_equation_outcome e)
 compile_valdef (Valdef (Signature s t) e) = 
     s ++ " :: " ++ compile_type t ++ "\n" ++ intercalate "\n" (map compile_equation e)
 
@@ -38,11 +42,22 @@ compile_valdef (Valdef (Signature s t) e) =
 compile_equation :: Equation -> String
 compile_equation (Equation s e st) = s ++ " " ++ compile_expr e ++ "=" ++ compile_stmt st
 
+-- TODO remove
+compile_equation_outcome :: Equation -> String
+compile_equation_outcome (Equation s e st) = s ++ " " ++ 
+    compile_expr e ++ "=" ++ compile_stmt_outcome st
+
+-- TODO remove
+compile_stmt_outcome :: Stmt -> String
+compile_stmt_outcome (SExpr (ESymbol "A")) = "P A"
+compile_stmt_outcome (SExpr (ESymbol "B")) = "P B"
+compile_stmt_outcome a = compile_stmt a
+
 -- Type/data declarations (bo/equationard, input)
 compile_typedef :: Stmt -> String
 compile_typedef (TypedefFunc "Board" e t) = 
-    "data Content = " ++
-    compile_type t ++ "\n" ++
+    -- "data Content = " ++
+    -- compile_type t ++ "\n" ++
     "board_size = " ++
     compile_expr e
 compile_typedef (Typedef "Input" t) = 
@@ -74,18 +89,16 @@ compile_btype (Btype b) = b
 
 compile_expr :: Expr -> String
 compile_expr (EInt i) = show i
--- Hardcoding the possible players for now (TODO don't do this)
 compile_expr (ESymbol s) 
-    | s == "A" = "P A"
-    | s == "B" = "P B"
+    | s == "initialBoard" = "initialBoard board_size" 
     | otherwise = s
 compile_expr (Paren e) = "(" ++ compile_expr e ++ ")"
 compile_expr (Tuple t) = "(" ++ intercalate "," (map compile_expr t) ++ ")"
 -- Need to check if it's a built in function with a different signature (or,and,...)
-compile_expr (FunctionApp s (Tuple e)) 
+compile_expr (FunctionApp s t@(Tuple e)) 
     | s == "or" || s == "and" = "(" ++ s ++ " [" ++ 
     intercalate "," (map compile_expr e) ++ "])"
-    | otherwise = "(" ++ s ++ " " ++ loop_expr_func e ++ ")"
+    | otherwise = "(" ++ s ++ " " ++ compile_expr t ++ ")"
 compile_expr (FunctionApp s e)
     | s == "or" || s == "and" = "(" ++ s ++ " [" ++ 
     compile_expr e ++ "])"

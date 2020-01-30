@@ -7,7 +7,7 @@ import Ast
 type Env = Map String String
 
 compile :: [Stmt] -> String
-compile x = "import Builtins\n" ++ "data Outcome = P Player | Tie deriving Show\n" ++ compile_loop x ++ 
+compile x = "import Builtins\nimport Debug.Trace\n" ++ "data Outcome = P Player | Tie deriving Show\n" ++ compile_loop x ++ 
     "main = print $ result"
 compile_loop [] = ""
 compile_loop (x:xs) = compile_stmt x ++ "\n" ++ compile_loop xs
@@ -33,6 +33,8 @@ compile_valdef (Valdef (Signature "initialBoard" t) ((Equation s e st):es)) =
     s ++ " :: Grid -> " ++ compile_type t ++ "\n" ++
     "initialBoard (Grid (x,y)) = board (x, y)" ++ compile_stmt st
 -- Hardcoding this for now (TODO)
+compile_valdef (Valdef (Signature "gameOver" t) e) = 
+    "gameOver :: " ++ compile_type t ++ "\ngameOver (b, p) | trace(printBoard b) False = undefined\n" ++ intercalate "\n" (map compile_equation e)
 compile_valdef (Valdef (Signature "outcome" t) e) = 
     "outcome" ++ " :: " ++ compile_type t ++ "\n" ++ intercalate "\n" (map compile_equation_outcome e)
 compile_valdef (Valdef (Signature s t) e) = 

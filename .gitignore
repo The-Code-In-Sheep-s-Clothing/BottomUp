@@ -7,3 +7,7 @@ Calc
 output.hs
 dist
 dist/*
+dist-newstye
+dist-newstyle/*
+*.local
+*.local~

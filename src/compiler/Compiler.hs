@@ -7,8 +7,8 @@ import Ast
 type Env = Map String String
 
 compile :: [Stmt] -> String
-compile x = "import Builtins\n" ++ "data Outcome = P Player | Tie\n" ++ compile_loop x ++ 
-    "main = return ()"
+compile x = "import Builtins\n" ++ "data Outcome = P Player | Tie deriving Show\n" ++ compile_loop x ++ 
+    "main = print $ result"
 compile_loop [] = ""
 compile_loop (x:xs) = compile_stmt x ++ "\n" ++ compile_loop xs
 
@@ -51,6 +51,9 @@ compile_equation_outcome (Equation s e st) = s ++ " " ++
 compile_stmt_outcome :: Stmt -> String
 compile_stmt_outcome (SExpr (ESymbol "A")) = "P A"
 compile_stmt_outcome (SExpr (ESymbol "B")) = "P B"
+compile_stmt_outcome (Conditional e s1 s2) = 
+    "if " ++ compile_expr e ++ " then " ++ compile_stmt_outcome s1 ++ 
+    " else " ++ compile_stmt_outcome s2
 compile_stmt_outcome a = compile_stmt a
 
 -- Type/data declarations (bo/equationard, input)

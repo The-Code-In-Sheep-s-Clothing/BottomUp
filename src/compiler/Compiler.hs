@@ -7,10 +7,9 @@ import Ast
 type Env = Map String String
 
 compile :: [Stmt] -> String
-compile x = "import Builtins\nimport Debug.Trace\n" ++ "data Outcome = P Player | Tie deriving Show\n" ++ compile_loop x ++ 
-    "main = print $ result"
-compile_loop [] = ""
-compile_loop (x:xs) = compile_stmt x ++ "\n" ++ compile_loop xs
+compile x = "import Builtins\n" ++ 
+    "data Outcome = P Player | Tie deriving Show\n" ++ 
+    intercalate "\n" (map compile_stmt x)
 
 compile_stmt :: Stmt -> String
 compile_stmt (Typedef s t) = compile_typedef (Typedef s t)
@@ -33,8 +32,6 @@ compile_valdef (Valdef (Signature "initialBoard" t) ((Equation s e st):es)) =
     s ++ " :: Grid -> " ++ compile_type t ++ "\n" ++
     "initialBoard (Grid (x,y)) = board (x, y)" ++ compile_stmt st
 -- Hardcoding this for now (TODO)
-compile_valdef (Valdef (Signature "gameOver" t) e) = 
-    "gameOver :: " ++ compile_type t ++ "\ngameOver (b, p) | trace(printBoard b) False = undefined\n" ++ intercalate "\n" (map compile_equation e)
 compile_valdef (Valdef (Signature "outcome" t) e) = 
     "outcome" ++ " :: " ++ compile_type t ++ "\n" ++ intercalate "\n" (map compile_equation_outcome e)
 compile_valdef (Valdef (Signature s t) e) = 
@@ -96,7 +93,6 @@ compile_expr :: Expr -> String
 compile_expr (EInt i) = show i
 compile_expr (ESymbol s) 
     | s == "initialBoard" = "initialBoard board_size" 
-    | s == "input" = "input []"
     | otherwise = s
 compile_expr (Paren e) = "(" ++ compile_expr e ++ ")"
 compile_expr (Tuple t) = "(" ++ intercalate "," (map compile_expr t) ++ ")"
@@ -108,6 +104,7 @@ compile_expr (FunctionApp s t@(Tuple e))
 compile_expr (FunctionApp s e)
     | s == "or" || s == "and" = "(" ++ s ++ " [" ++ 
     compile_expr e ++ "])"
+    | s == "input" = "(" ++ s ++ " " ++ compile_expr e ++ " [])"
     | otherwise = "(" ++ s ++ " " ++ compile_expr e ++ ")"
 compile_expr (Infix e1 b e2) = compile_expr e1 ++ compile_binop b ++ compile_expr e2
 compile_expr (Empty) = ""

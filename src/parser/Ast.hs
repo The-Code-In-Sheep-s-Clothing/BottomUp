@@ -35,6 +35,7 @@ data Expr = EInt Int
           deriving Show
 
 data Btype = Btype String
+           | Ttype'' Ttype 
            deriving Show
 
 data Xtype = Xtype [Btype]

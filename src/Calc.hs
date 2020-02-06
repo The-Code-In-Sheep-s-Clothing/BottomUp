@@ -3,6 +3,7 @@ import Grammar
 import Tokens
 import Compiler
 import Ast
+import TypeChecker
 
 type Env = String -> [Stmt]
 emptyEnv = error "Not found"
@@ -30,6 +31,8 @@ main = do
     -- print tokens
     let ast = parseCalc (tokens)
     print ast
-    writeFile "output.hs" (compile ast)
+    let (valid, error) = check_start(ast)
+    putStrLn error
+    --writeFile "output.hs" (compile ast)
     --print (run ast)
     

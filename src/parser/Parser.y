@@ -58,6 +58,7 @@ List          : Variable comma List                                       { [$1]
                   
 Btype         : symbol                                                    { Btype $1 }
 Xtype         : Btype pipe XtypeHelper                                    { Xtype $1 $3 }
+              | Btype                                                     { Xtype $1 []}
 XtypeHelper   : symbol pipe XtypeHelper                                   { [$1] ++ $3 }
               | symbol                                                    { [$1] }
 Ttype1        : Xtype comma Ttype1                                        { let Ttype l = $3 in Ttype $ [$1] ++ l }
@@ -107,5 +108,6 @@ FunctionApp   : symbol OptionalArgs                                       { Func
 {
 
 parseError :: [Token] -> a
-parseError _ = error "Parse error"
+parseError (l:ls) = error $ "error: " ++ (show l)
+parseError [] = error "Unexpected end of Input"
 }

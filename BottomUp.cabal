@@ -20,7 +20,7 @@ executable BottomUp
   main-is:             Main.hs
   other-modules:       Lexer, Parser
   other-extensions:    CPP
-  build-depends:       base >=4.9, array >=0.5 && <0.6, containers >= 0.6.2.1
+  build-depends:       base >=4.9, array >=0.5 && <0.6, containers >= 0.6.2.1, mtl >= 2.2.1, split >= 0.2.3.2
   hs-source-dirs:      src, src/parser, src/lexer, src/compiler, src/typeChecker
   build-tools-depends: alex, happy
   default-language:    Haskell2010

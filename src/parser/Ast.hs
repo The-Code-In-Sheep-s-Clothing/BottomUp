@@ -23,6 +23,7 @@ data Stmt = Conditional Expr Stmt Stmt
           | Typedef String Type
           | TypedefFunc String Expr Type -- Used for type Board = Grid() of ...
           | SExpr Expr
+          | SComment String
           deriving Show
 
 data Expr = EInt Int
@@ -38,7 +39,7 @@ data Btype = Btype String
            | Ttype'' Ttype 
            deriving Show
 
-data Xtype = Xtype [Btype]
+data Xtype = Xtype Btype [String]
            deriving Show
 
 data Ttype = Ttype [Xtype]

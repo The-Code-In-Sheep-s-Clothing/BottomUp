@@ -10,7 +10,7 @@ $alpha = [a-zA-Z]
 
 tokens :-
   $white+                 ;
-  "--".*                  ;
+  "--".*                  { \s -> TokenComment s }
   type                    { \s -> TokenType }
   if                      { \s -> TokenIf }
   then                    { \s -> TokenThen }
@@ -50,7 +50,8 @@ stripFirstWord (x:xs)   = x : stripFirstWord xs
 stripFirstWord _        = ""
 
 -- The token type:
-data Token = TokenType
+data Token = TokenComment String
+           | TokenType
            | TokenIf
            | TokenThen
            | TokenElse

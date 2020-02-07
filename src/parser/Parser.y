@@ -36,6 +36,7 @@ import Ast
   gte                           { TokenGTE }
   symbol                        { TokenSym $$ }
   functionDef                   { TokenFunctionDef $$ }
+  comment                       { TokenComment $$ }
 
 %left eq gt lt lte gte
 %left plus minus
@@ -43,8 +44,8 @@ import Ast
 %left assign
 
 %%
-Stmts : Stmt Stmts {[$1] ++ $2}
-      | Stmt {[$1]}
+Stmts         : Stmt Stmts                                                { [$1] ++ $2 }
+              | Stmt                                                      { [$1] }
 
 OptionalArgs  : lparen TupleList rparen                                   { Tuple $2 }
               | lparen Variable rparen                                    { $2 }
@@ -56,8 +57,9 @@ List          : Variable comma List                                       { [$1]
               | Variable                                                  { [$1] }
                   
 Btype         : symbol                                                    { Btype $1 }
-Xtype         : Btype pipe Xtype                                          { let Xtype l = $3 in Xtype $ [$1] ++ l }
-              | Btype                                                     { Xtype [$1] }
+Xtype         : Btype pipe XtypeHelper                                    { Xtype $1 $3 }
+XtypeHelper   : symbol pipe XtypeHelper                                   { [$1] ++ $3 }
+              | symbol                                                    { [$1] }
 Ttype1        : Xtype comma Ttype1                                        { let Ttype l = $3 in Ttype $ [$1] ++ l }
               | Xtype comma Xtype                                         { Ttype $ [$1] ++ [$3] }
 Ttype         : lparen Ttype1 rparen                                      { $2 }
@@ -75,6 +77,7 @@ Equations     : Equation Equations                                        { [$1]
 Stmt          : Signature Equations                                       { Valdef $1 $2}
               | type symbol assign Type                                   { Typedef $2 $4 }
               | type symbol assign FunctionApp of Type                    { TypedefFunc $2 $4 $6 }
+              | comment                                                   { SComment $1 }
                 
                 
 WeakStmt      : if Expr then WeakStmt else WeakStmt                       { Conditional $2 $4 $6 }

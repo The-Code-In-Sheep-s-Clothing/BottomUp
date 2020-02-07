@@ -1,90 +1,129 @@
 module Compiler where
 import Data.List
+import Data.List.Split
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Control.Monad.State
 import Ast
 
-type Env = Map String String
+type Env = [(String, [String])]
+type StateRet = State Env String
 
+-- Helpers
+-- Append string to functor
+(<++) :: (Functor f) => f String -> String -> f String 
+x <++ s = (++s) <$> x
+
+(++>) :: (Functor f) => String -> f String -> f String 
+s ++> x = (s++) <$> x
+
+(<++>) :: (Applicative f) => f String -> f String -> f String 
+x1 <++> x2 = (++) <$> x1 <*> x2
+
+intercalateM :: (Monad m) => String -> [m String] -> m String
+intercalateM s l = sequence l >>= \x -> return (intercalate s x)
+
+
+-- Compilation Code
 compile :: [Stmt] -> String
 compile x = "import Builtins\n" ++ 
-    "data Outcome = P Player | Tie deriving Show\n" ++ 
-    intercalate "\n" (map compile_stmt x)
+    let (res, st) = runState (compile_stmts x) [] in
+        compile_state st ++ "\n" ++ res
 
-compile_stmt :: Stmt -> String
+compile_state :: Env -> String
+compile_state e = intercalate "\n" (map compile_single_state e)
+
+compile_single_state :: (String, [String]) -> String
+compile_single_state (s, l) = "data " ++ s ++ " = " ++ s ++ "Con " ++ head (splitOn "_" s) ++ "|" ++ intercalate " | " l
+
+compile_stmts :: [Stmt] -> StateRet
+compile_stmts [] = return ""
+compile_stmts (x:xs) = (++) <$> (compile_stmt x <++ "\n") <*> compile_stmts xs
+
+compile_stmt :: Stmt -> StateRet
 compile_stmt (Typedef s t) = compile_typedef (Typedef s t)
 compile_stmt (TypedefFunc s e t ) = compile_typedef (TypedefFunc s e t)
-compile_stmt (Valdef s e) = compile_valdef (Valdef s e) ++ "\n"
-compile_stmt (SExpr e) = compile_expr e
-compile_stmt (Let s e st) = "let " ++ s ++ "=" ++ compile_expr e ++ " in " ++ compile_stmt st
+compile_stmt (Valdef s e) = compile_valdef (Valdef s e) <++ "\n"
+compile_stmt (SExpr e) = return (compile_expr e)
+compile_stmt (Let s e st) = ("let " ++ s ++ "=" ++ compile_expr e ++ " in ") ++> compile_stmt st
 compile_stmt (Conditional e s1 s2) = 
-    "if " ++ compile_expr e ++ " then " ++ compile_stmt s1 ++ " else " ++ compile_stmt s2
-compile_stmt (While (FunctionApp f1 e1) (FunctionApp f2 e2)) =
+    ("if " ++ compile_expr e ++ " then ") ++> compile_stmt s1 <++> (" else " ++> compile_stmt s2)
+compile_stmt (While (FunctionApp f1 e1) (FunctionApp f2 e2)) = return (
     "while " ++ "(" ++ f1 ++ while_compose e1 ++ ")" ++ " " ++ 
-    "(" ++ f2  ++ ")"++ " " ++ compile_expr e2 
+    "(" ++ f2  ++ ")" ++ " " ++ compile_expr e2 )
 while_compose (FunctionApp f e) = "." ++ f ++ while_compose e
 while_compose _ = ""
 
+compile_func_stmt :: String -> Stmt -> StateRet
+compile_func_stmt f (SExpr (ESymbol e)) = do
+    cur_state <- get
+    if elem f (map fst cur_state) then
+        if elem e (get_snd_state f cur_state) then
+            return (e)
+        else
+            return (f ++ "Con " ++ e)
+    else
+        return (e)
+compile_func_stmt f (SExpr e) = return (compile_expr e)
+compile_func_stmt _ (Typedef s t) = compile_typedef (Typedef s t)
+compile_func_stmt _ (TypedefFunc s e t ) = compile_typedef (TypedefFunc s e t)
+compile_func_stmt _ (Valdef s e) = compile_valdef (Valdef s e) <++ "\n"
+compile_func_stmt f (Let s e st) = ("let " ++ s ++ "=" ++ compile_expr e ++ " in ") ++> compile_func_stmt f st
+compile_func_stmt f (Conditional e s1 s2) = 
+    ("if " ++ compile_expr e ++ " then ") ++> compile_func_stmt f s1 <++> (" else " ++> compile_func_stmt f s2)
+compile_func_stmt _ (While (FunctionApp f1 e1) (FunctionApp f2 e2)) = return (
+    "while " ++ "(" ++ f1 ++ while_compose e1 ++ ")" ++ " " ++ 
+    "(" ++ f2  ++ ")" ++ " " ++ compile_expr e2 )
+
 -- Function type definition
 -- TODO accept different types of arguments for initialBoard
-compile_valdef :: Stmt -> String
+compile_valdef :: Stmt -> StateRet
 compile_valdef (Valdef (Signature "initialBoard" t) ((Equation s e st):es)) =
-    s ++ " :: Grid -> " ++ compile_type t ++ "\n" ++
-    "initialBoard (Grid (x,y)) = board (x, y)" ++ compile_stmt st
--- Hardcoding this for now (TODO)
-compile_valdef (Valdef (Signature "outcome" t) e) = 
-    "outcome" ++ " :: " ++ compile_type t ++ "\n" ++ intercalate "\n" (map compile_equation_outcome e)
+    (((s ++ " :: Grid -> ") ++> compile_type t ) <++ ("\n" ++
+    "initialBoard (Grid (x,y)) = board (x, y)")) <++> (compile_stmt st)
 compile_valdef (Valdef (Signature s t) e) = 
-    s ++ " :: " ++ compile_type t ++ "\n" ++ intercalate "\n" (map compile_equation e)
+    (s ++ " :: ") ++> compile_type t <++ "\n" <++> (intercalateM "\n" (map (compile_equation (get_return_type t)) e))
 
 -- Function defintion equations
-compile_equation :: Equation -> String
-compile_equation (Equation s e st) = s ++ " " ++ compile_expr e ++ "=" ++ compile_stmt st
-
--- TODO remove
-compile_equation_outcome :: Equation -> String
-compile_equation_outcome (Equation s e st) = s ++ " " ++ 
-    compile_expr e ++ "=" ++ compile_stmt_outcome st
-
--- TODO remove
-compile_stmt_outcome :: Stmt -> String
-compile_stmt_outcome (SExpr (ESymbol "A")) = "P A"
-compile_stmt_outcome (SExpr (ESymbol "B")) = "P B"
-compile_stmt_outcome (Conditional e s1 s2) = 
-    "if " ++ compile_expr e ++ " then " ++ compile_stmt_outcome s1 ++ 
-    " else " ++ compile_stmt_outcome s2
-compile_stmt_outcome a = compile_stmt a
+compile_equation :: String -> Equation -> StateRet
+compile_equation f (Equation s e st) = (s ++ " " ++ compile_expr e ++ "=") ++> compile_func_stmt f st
 
 -- Type/data declarations (bo/equationard, input)
-compile_typedef :: Stmt -> String
-compile_typedef (TypedefFunc "Board" e t) = 
+compile_typedef :: Stmt -> StateRet
+compile_typedef (TypedefFunc "Board" e t) = return (
     -- "data Content = " ++
     -- compile_type t ++ "\n" ++
     "board_size = " ++
-    compile_expr e
+    compile_expr e)
 compile_typedef (Typedef "Input" t) = 
-    "type Input = " ++ 
-    compile_type t
-compile_typedef (Typedef s t) = "type " ++ s ++ " = " ++ compile_type t
+    "type Input = " ++> compile_type t
+compile_typedef (Typedef s t) = ("type " ++ s ++ " = ") ++> compile_type t
 
-compile_type :: Type -> String
+compile_type :: Type -> StateRet
 compile_type (Ptype' p) = compile_ptype p
 compile_type (Ftype' f) = compile_ftype f
 
-compile_ptype :: Ptype -> String
+compile_ptype :: Ptype -> StateRet
 compile_ptype (Xtype' x) = compile_xtype x
 compile_ptype (Ttype' t) = compile_ttype t
 
-compile_ftype :: Ftype -> String
-compile_ftype (Ftype p1 p2) = compile_ptype p1 ++ "->" ++ compile_ptype p2
+compile_ftype :: Ftype -> StateRet
+compile_ftype (Ftype p1 p2) = compile_ptype p1 <++ " -> " <++> compile_ptype p2
 
-compile_xtype :: Xtype -> String
-compile_xtype (Xtype [Btype "Player", Btype "Tie"]) = "Outcome"
-compile_xtype (Xtype b) = intercalate "|" (map compile_btype b)
+compile_xtype :: Xtype -> StateRet
+compile_xtype (Xtype [b]) = return (compile_btype b)
+compile_xtype (Xtype l) = do
+    cur_state <- get
+    let type_list = map compile_btype l
+    let t = intercalate "_" type_list
+    if not (elem t (map fst cur_state)) then do
+        put (cur_state ++ [(t, drop 1 type_list)])
+        return t
+    else do
+        return t
 
-compile_ttype :: Ttype -> String
-compile_ttype (Ttype x) = "(" ++ loop_ttype x ++ ")"
-loop_ttype x = intercalate "," (map compile_xtype x)
+compile_ttype :: Ttype -> StateRet
+compile_ttype (Ttype x) = "(" ++> (intercalateM "," (map compile_xtype x)) <++ ")"
 
 compile_btype :: Btype -> String
 compile_btype (Btype b) = b
@@ -124,3 +163,11 @@ compile_binop LessThan = "<"
 compile_binop GreaterThan = ">"
 compile_binop LessThanEqual = "<="
 compile_binop GreaterThanEqual = ">="
+
+get_return_type :: Type -> String
+get_return_type (Ptype' p) = evalState (compile_ptype p) []
+get_return_type (Ftype' (Ftype _ p2)) = evalState (compile_ptype p2) []
+
+get_snd_state :: String -> Env -> [String]
+get_snd_state s [] = []
+get_snd_state s (e:es) = if fst e == s then snd e else get_snd_state s es

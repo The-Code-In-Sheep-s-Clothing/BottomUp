@@ -62,9 +62,9 @@ place (p, b, pos) = b // [(pos, Occupied p)]
 
 getInts :: Board -> IO (Int, Int)
 getInts b = do
+    putStrLn $ printBoard b
     x <- getInt
     y <- getInt
-    putStrLn $ printBoard b
     return (x, y)
 
 getInt :: IO Int

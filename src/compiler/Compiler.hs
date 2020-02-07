@@ -34,7 +34,9 @@ compile_state :: Env -> String
 compile_state e = intercalate "\n" (map compile_single_state e)
 
 compile_single_state :: (String, [String]) -> String
-compile_single_state (s, l) = "data " ++ s ++ " = " ++ s ++ "Con " ++ head (splitOn "_" s) ++ "|" ++ intercalate " | " l
+compile_single_state (s, l) = "data " ++ s ++ " = " ++ s ++ "Con " ++ 
+    head (splitOn "_" s) ++ "|" ++ intercalate " | " l ++
+    "deriving (Show)"
 
 compile_stmts :: [Stmt] -> StateRet
 compile_stmts [] = return ""

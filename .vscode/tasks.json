@@ -15,7 +15,7 @@
         {
             "label": "Run",
             "type": "shell",
-            "command": "./Calc < ../test/testing.bgl",
+            "command": "./Main < ../test/testing.bgl",
             "options": {
                 "cwd": "${workspaceFolder}/src"
             },

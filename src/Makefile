@@ -1,15 +1,15 @@
-all: Calc
+all: Main
 
-Tokens.hs : lexer/Tokens.x
-	alex lexer/Tokens.x
+Lexer.hs : lexer/Lexer.x
+	alex lexer/Lexer.x
 
-Grammar.hs : parser/Grammar.y
-	happy parser/Grammar.y
+Parser.hs : parser/Parser.y
+	happy parser/Parser.y
     
-Calc : Tokens.hs Grammar.hs Calc.hs
-	ghc --make Calc -i./compiler:./parser:./lexer:./typeChecker
+Main : Lexer.hs Parser.hs Main.hs
+	ghc --make Main -i./compiler:./parser:./lexer:./typeChecker
     
 clean:
-	rm -f Calc parser/Grammar.hs lexer/Tokens.hs *.o *.hi output.hs
+	rm -f Main parser/Parser.hs lexer/Lexer.hs *.o *.hi output.hs
 	rm -f */*.o */*.hi
     

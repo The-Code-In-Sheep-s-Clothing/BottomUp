@@ -38,24 +38,10 @@ compile_single_state (s, l) = "data " ++ s ++ " = " ++ s ++ "Con " ++ head (spli
 
 compile_stmts :: [Stmt] -> StateRet
 compile_stmts [] = return ""
-compile_stmts (x:xs) = (++) <$> (compile_stmt x <++ "\n") <*> compile_stmts xs
+compile_stmts (x:xs) = (++) <$> (compile_stmt "" x <++ "\n") <*> compile_stmts xs
 
-compile_stmt :: Stmt -> StateRet
-compile_stmt (Typedef s t) = compile_typedef (Typedef s t)
-compile_stmt (TypedefFunc s e t ) = compile_typedef (TypedefFunc s e t)
-compile_stmt (Valdef s e) = compile_valdef (Valdef s e) <++ "\n"
-compile_stmt (SExpr e) = return (compile_expr e)
-compile_stmt (Let s e st) = ("let " ++ s ++ "=" ++ compile_expr e ++ " in ") ++> compile_stmt st
-compile_stmt (Conditional e s1 s2) = 
-    ("if " ++ compile_expr e ++ " then ") ++> compile_stmt s1 <++> (" else " ++> compile_stmt s2)
-compile_stmt (While (FunctionApp f1 e1) (FunctionApp f2 e2)) = return (
-    "while " ++ "(" ++ f1 ++ while_compose e1 ++ ")" ++ " " ++ 
-    "(" ++ f2  ++ ")" ++ " " ++ compile_expr e2 )
-while_compose (FunctionApp f e) = "." ++ f ++ while_compose e
-while_compose _ = ""
-
-compile_func_stmt :: String -> Stmt -> StateRet
-compile_func_stmt f (SExpr (ESymbol e)) = do
+compile_stmt :: String -> Stmt -> StateRet
+compile_stmt f (SExpr (ESymbol e)) = do
     cur_state <- get
     if elem f (map fst cur_state) then
         if elem e (get_snd_state f cur_state) then
@@ -64,29 +50,31 @@ compile_func_stmt f (SExpr (ESymbol e)) = do
             return (f ++ "Con " ++ e)
     else
         return (e)
-compile_func_stmt f (SExpr e) = return (compile_expr e)
-compile_func_stmt _ (Typedef s t) = compile_typedef (Typedef s t)
-compile_func_stmt _ (TypedefFunc s e t ) = compile_typedef (TypedefFunc s e t)
-compile_func_stmt _ (Valdef s e) = compile_valdef (Valdef s e) <++ "\n"
-compile_func_stmt f (Let s e st) = ("let " ++ s ++ "=" ++ compile_expr e ++ " in ") ++> compile_func_stmt f st
-compile_func_stmt f (Conditional e s1 s2) = 
-    ("if " ++ compile_expr e ++ " then ") ++> compile_func_stmt f s1 <++> (" else " ++> compile_func_stmt f s2)
-compile_func_stmt _ (While (FunctionApp f1 e1) (FunctionApp f2 e2)) = return (
+compile_stmt f (SExpr e) = return (compile_expr e)
+compile_stmt _ (Typedef s t) = compile_typedef (Typedef s t)
+compile_stmt _ (TypedefFunc s e t ) = compile_typedef (TypedefFunc s e t)
+compile_stmt _ (Valdef s e) = compile_valdef (Valdef s e) <++ "\n"
+compile_stmt f (Let s e st) = ("let " ++ s ++ "=" ++ compile_expr e ++ " in ") ++> compile_stmt f st
+compile_stmt f (Conditional e s1 s2) = 
+    ("if " ++ compile_expr e ++ " then ") ++> compile_stmt f s1 <++> (" else " ++> compile_stmt f s2)
+compile_stmt _ (While (FunctionApp f1 e1) (FunctionApp f2 e2)) = return (
     "while " ++ "(" ++ f1 ++ while_compose e1 ++ ")" ++ " " ++ 
     "(" ++ f2  ++ ")" ++ " " ++ compile_expr e2 )
+while_compose (FunctionApp f e) = "." ++ f ++ while_compose e
+while_compose _ = ""
 
 -- Function type definition
 -- TODO accept different types of arguments for initialBoard
 compile_valdef :: Stmt -> StateRet
 compile_valdef (Valdef (Signature "initialBoard" t) ((Equation s e st):es)) =
     (((s ++ " :: Grid -> ") ++> compile_type t ) <++ ("\n" ++
-    "initialBoard (Grid (x,y)) = board (x, y)")) <++> (compile_stmt st)
+    "initialBoard (Grid (x,y)) = board (x, y)")) <++> (compile_stmt "" st)
 compile_valdef (Valdef (Signature s t) e) = 
     (s ++ " :: ") ++> compile_type t <++ "\n" <++> (intercalateM "\n" (map (compile_equation (get_return_type t)) e))
 
 -- Function defintion equations
 compile_equation :: String -> Equation -> StateRet
-compile_equation f (Equation s e st) = (s ++ " " ++ compile_expr e ++ "=") ++> compile_func_stmt f st
+compile_equation f (Equation s e st) = (s ++ " " ++ compile_expr e ++ "=") ++> compile_stmt f st
 
 -- Type/data declarations (bo/equationard, input)
 compile_typedef :: Stmt -> StateRet
@@ -111,10 +99,10 @@ compile_ftype :: Ftype -> StateRet
 compile_ftype (Ftype p1 p2) = compile_ptype p1 <++ " -> " <++> compile_ptype p2
 
 compile_xtype :: Xtype -> StateRet
-compile_xtype (Xtype [b]) = return (compile_btype b)
-compile_xtype (Xtype l) = do
+compile_xtype (Xtype b []) = return (compile_btype b)
+compile_xtype (Xtype b l) = do
     cur_state <- get
-    let type_list = map compile_btype l
+    let type_list = [compile_btype b] ++ l
     let t = intercalate "_" type_list
     if not (elem t (map fst cur_state)) then do
         put (cur_state ++ [(t, drop 1 type_list)])

@@ -28,7 +28,7 @@ main :: IO ()
 main = do
     s <- getContents
     let tokens = scanTokens s
-    -- print tokens
+    print tokens
     let ast = parseCalc (tokens)
     print ast
     -- let (valid, error) = check_start(ast)

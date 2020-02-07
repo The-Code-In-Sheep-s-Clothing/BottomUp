@@ -60,14 +60,21 @@ next B = A
 place :: (Player, Board, Position) -> Board
 place (p, b, pos) = b // [(pos, Occupied p)]
 
+getInts :: Board -> IO (Int, Int)
+getInts b = do
+    x <- getInt
+    y <- getInt
+    putStrLn $ printBoard b
+    return (x, y)
+
 getInt :: IO Int
 getInt = do
     hFlush stdout
     i <- getLine
     return $ read i
 
-input :: [Int] -> Position
-input _ = (unsafePerformIO getInt, unsafePerformIO getInt)
+input :: Board -> [Int] -> Position
+input b l = unsafePerformIO $ getInts b
 
 -- Board size
 --

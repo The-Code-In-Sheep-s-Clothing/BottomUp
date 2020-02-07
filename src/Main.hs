@@ -1,6 +1,6 @@
 module Main where
-import Grammar
-import Tokens
+import Parser
+import Lexer
 import Compiler
 import Ast
 import TypeChecker

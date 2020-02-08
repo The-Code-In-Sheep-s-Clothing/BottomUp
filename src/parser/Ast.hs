@@ -36,7 +36,6 @@ data Expr = EInt Int
           deriving Show
 
 data Btype = Btype String
-           | Ttype'' Ttype 
            deriving Show
 
 data Xtype = Xtype Btype [String]
@@ -55,3 +54,11 @@ data Ftype = Ftype Ptype Ptype
 data Type = Ptype' Ptype
           | Ftype' Ftype
           deriving Show
+
+data NewType = Sgl BaseType
+             | Dbl [BaseType]
+             | Tpl [[BaseType]] [BaseType]
+             | Em 
+data BaseType  = Base String 
+               | Sls String
+               | Ifblk

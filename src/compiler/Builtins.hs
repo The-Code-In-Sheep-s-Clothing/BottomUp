@@ -10,9 +10,9 @@ import Debug.Trace
 import System.IO
 
 data Player   = A | B deriving (Eq,Show)
-data Grid     = Grid (Int,Int) deriving(Show)
-type Board    = Array (Int,Int) Content
-type State    = (Board,Player)
+data Grid     = Array (Int,Int) deriving(Show)
+type Board c  = Array (Int,Int) c
+type State    = (Board Content,Player)
 data Content  = Occupied Player | Empty deriving (Show,Eq)
 type Position = (Int,Int)
 
@@ -20,24 +20,24 @@ type Position = (Int,Int)
 --
 -- Generic functions on boards
 --
-type Row = [Content]
+type Row c = [c]
 
 -- Create a board from rows, using bottom-up numbering of rows
 --
-board :: (Int,Int) -> Content -> Board
+board :: (Int,Int) -> c -> Board c
 board size c = listArray ((1,1),size) (Prelude.repeat c)
 
-byRows :: [[Content]] -> Board
+byRows :: [[c]] -> Board c
 byRows rows = listArray ((1,1),size) (concat (reverse rows))
               where size = (length rows,length (head rows))
 
-getBoardContent :: (Board, Position) -> Content
+getBoardContent :: (Board c, Position) -> c
 getBoardContent (b,p) = b!p
 
-printBoard :: Board -> String
+printBoard :: Show c => Board c -> String
 printBoard b = printBoardHelp b (bounds b)
 
-printBoardHelp :: Board -> ((Int, Int), (Int, Int)) -> String
+printBoardHelp :: Show c => Board c -> ((Int, Int), (Int, Int)) -> String
 printBoardHelp board ((a, b), (c, d)) = spaceString (board!(a, b)) ++ 
 					if (a < c || b < d) then
 						if(b < d) then
@@ -45,10 +45,8 @@ printBoardHelp board ((a, b), (c, d)) = spaceString (board!(a, b)) ++
 						else "\n" ++ printBoardHelp board ((a+1, 1), (c, d))
 					else ""
 
-spaceString :: Content -> String
-spaceString Empty = "Empty "
-spaceString (Occupied A) = "A     "
-spaceString (Occupied B) = "B     "
+spaceString :: Show c => c -> String
+spaceString c = show c
 
 while :: (t -> Bool) -> (t -> t) -> t -> t
 while cond exe v = if (cond) v then while cond exe (exe v) else v
@@ -57,10 +55,10 @@ next :: Player -> Player
 next A = B
 next B = A
 
-place :: (Player, Board, Position) -> Board
+place :: (Player, Board Content, Position) -> Board Content
 place (p, b, pos) = b // [(pos, Occupied p)]
 
-getInts :: Board -> IO (Int, Int)
+getInts :: Show c => Board c -> IO (Int, Int)
 getInts b = do
     putStrLn $ printBoard b
     x <- getInt
@@ -73,49 +71,49 @@ getInt = do
     i <- getLine
     return $ read i
 
-input :: Board -> [Int] -> Position
+input :: Show c => Board c -> [Int] -> Position
 input b l = unsafePerformIO $ getInts b
 
 -- Board size
 --
-size :: Board -> (Int,Int)
+size :: Board c -> (Int,Int)
 size = snd . bounds
 
-maxRow :: Board -> Int
+maxRow :: Board c -> Int
 maxRow = fst . size
 
-maxCol :: Board -> Int
+maxCol :: Board c -> Int
 maxCol = snd . size
 
 -- Extracting rows, columns, and diagonals
 --
-row :: Board -> Int -> Row
+row :: Board c -> Int -> Row c
 row b y = [b!(y,x) | x <- [1..maxCol b]]
 
-rows :: Board -> [Row]
+rows :: Board c -> [Row c]
 rows b = [row b r | r <- [1..maxRow b]]
 
-col :: Board -> Int -> Row
+col :: Board c -> Int -> Row c
 col b x = [b!(y,x) | y <- [1..maxRow b]]
 
-cols :: Board -> [Row]
+cols :: Board c -> [Row c]
 cols b = [col b c | c <- [1..maxCol b]]
 
-diagsUp :: Board -> (Int,Int) -> Row
+diagsUp :: Board c -> (Int,Int) -> Row c
 diagsUp b (y,x) | y > maxRow b || x > maxCol b = []
                | otherwise = b!(y,x):diagsUp b (y+1,x+1)
 
-diagsDown :: Board -> (Int,Int) -> Row
+diagsDown :: Board c -> (Int,Int) -> Row c
 diagsDown b (y,x) | y < 1 || x < 1 = []
                  | otherwise = b!(y,x):diagsDown b (y-1,x-1)
 
-diags :: Board -> [Row]
+diags :: Board c -> [Row c]
 diags b = [diagsUp b (1,x) | x <- [1..maxCol b]] ++
           [diagsUp b (y,1) | y <- [2..maxRow b]] ++
           [diagsDown b (maxRow b,x) | x <- [1..maxCol b]] ++
           [diagsDown b (y,1) | y <- [1..maxRow b-1]]
 
-allRows :: Board -> [Row]
+allRows :: Board c -> [Row c]
 allRows b = rows b ++ cols b ++ diags b
 
 
@@ -136,7 +134,7 @@ allRows b = rows b ++ cols b ++ diags b
 
 -- Conditions / board properties
 --
-type BoardProperty = Board -> Bool
+type BoardProperty = Board Content -> Bool
 
 (&&&) :: BoardProperty -> BoardProperty -> BoardProperty
 p &&& q = \b -> p b && q b
@@ -144,7 +142,7 @@ p &&& q = \b -> p b && q b
 (|||) :: BoardProperty -> BoardProperty -> BoardProperty
 p ||| q = \b -> p b || q b
 
-open :: Board -> [Position]
+open :: Board Content -> [Position]
 open g = [p | (p,v) <- assocs g, v==Empty]
 
 isFull :: BoardProperty
@@ -153,12 +151,12 @@ isFull = null . open
 -- (!!!) :: Board -> [Position] -> [Content]
 -- g !!! ps = map (g!) ps
 
-ofKind :: Int -> Player -> Row
+ofKind :: Int -> Player -> Row Content
 -- ofKind n = map Occupied . replicate n
 n `ofKind` p = map Occupied (replicate n p)
 
 -- fourAs = 4 `ofKind` A
 -- fourBs = 4 `ofKind` B
 
-inARow :: (Int,Player,Board) -> Bool
+inARow :: (Int,Player,Board Content) -> Bool
 inARow (n,p,b) = (any (isInfixOf (n `ofKind` p)) . allRows) b

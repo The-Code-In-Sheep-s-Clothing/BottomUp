@@ -9,7 +9,6 @@ import Ast
 type Env = [(String, [String])]
 type StateRet = State Env String
 
--- Helpers
 -- Append string to functor
 (<++) :: (Functor f) => f String -> String -> f String 
 x <++ s = (++s) <$> x
@@ -36,7 +35,7 @@ compile_state e = intercalate "\n" (map compile_single_state e)
 compile_single_state :: (String, [String]) -> String
 compile_single_state (s, l) = "data " ++ s ++ " = " ++ s ++ "Con " ++ 
     head (splitOn "_" s) ++ "|" ++ intercalate " | " l ++
-    "deriving (Show)"
+    " deriving (Show)"
 
 compile_stmts :: [Stmt] -> StateRet
 compile_stmts [] = return ""
@@ -62,6 +61,7 @@ compile_stmt f (Conditional e s1 s2) =
 compile_stmt _ (While (FunctionApp f1 e1) (FunctionApp f2 e2)) = return (
     "while " ++ "(" ++ f1 ++ while_compose e1 ++ ")" ++ " " ++ 
     "(" ++ f2  ++ ")" ++ " " ++ compile_expr e2 )
+compile_stmt _ (SComment s) = return s
 while_compose (FunctionApp f e) = "." ++ f ++ while_compose e
 while_compose _ = ""
 
@@ -70,7 +70,7 @@ while_compose _ = ""
 compile_valdef :: Stmt -> StateRet
 compile_valdef (Valdef (Signature "initialBoard" t) ((Equation s e st):es)) =
     (((s ++ " :: Grid -> ") ++> compile_type t ) <++ ("\n" ++
-    "initialBoard (Grid (x,y)) = board (x, y)")) <++> (compile_stmt "" st)
+    "initialBoard (Array (x,y)) = board (x, y)")) <++> (compile_stmt "" st)
 compile_valdef (Valdef (Signature s t) e) = 
     (s ++ " :: ") ++> compile_type t <++ "\n" <++> (intercalateM "\n" (map (compile_equation (get_return_type t)) e))
 
@@ -80,11 +80,14 @@ compile_equation f (Equation s e st) = (s ++ " " ++ compile_expr e ++ "=") ++> c
 
 -- Type/data declarations (bo/equationard, input)
 compile_typedef :: Stmt -> StateRet
-compile_typedef (TypedefFunc "Board" e t) = return (
-    -- "data Content = " ++
-    -- compile_type t ++ "\n" ++
-    "board_size = " ++
-    compile_expr e)
+compile_typedef (TypedefFunc "Board" e t) = 
+    if evalState (compile_type t) [] == "Content" then
+        return ("type UserContent = Content\n" ++ "board_size = " ++ compile_expr e)
+    else
+        "data UserContent = " ++>
+        compile_type t <++ ("\n" ++
+        "board_size = " ++
+        compile_expr e)
 compile_typedef (Typedef "Input" t) = 
     "type Input = " ++> compile_type t
 compile_typedef (Typedef s t) = ("type " ++ s ++ " = ") ++> compile_type t
@@ -116,6 +119,7 @@ compile_ttype :: Ttype -> StateRet
 compile_ttype (Ttype x) = "(" ++> (intercalateM "," (map compile_xtype x)) <++ ")"
 
 compile_btype :: Btype -> String
+compile_btype (Btype "Board") = "Board UserContent"
 compile_btype (Btype b) = b
 
 compile_expr :: Expr -> String

@@ -11,34 +11,34 @@ import Ast
 %lexer{lexwrap}{TokenEOF}
 
 %token
-  type                          { TokenType _ }
-  if                            { TokenIf _ }
-  then                          { TokenThen _ }
-  else                          { TokenElse _ }
-  while                         { TokenWhile _ }
-  do                            { TokenDo _ }
-  of                            { TokenOf _ }
-  let                           { TokenLet _ }
-  in                            { TokenIn _ }
-  int                           { TokenInt _ int}
-  assign                        { TokenAssign _ }
-  plus                          { TokenPlus _ }
-  minus                         { TokenMinus _ }
-  times                         { TokenTimes _ }
-  div                           { TokenDiv _ }
-  lparen                        { TokenLParen _ }
-  rparen                        { TokenRParen _ }
-  pipe                          { TokenPipe _ }
-  arrow                         { TokenArrow _ }
-  comma                         { TokenComa _ }
-  eq                            { TokenEQ _ }
-  gt                            { TokenGT _ }
-  lt                            { TokenLT _ }
-  lte                           { TokenLTE _ }
-  gte                           { TokenGTE _ }
-  symbol                        { TokenSym _ name }
-  functionDef                   { TokenFunctionDef _ name }
-  comment                       { TokenComment _ comment }
+  type                          { TokenType pos }
+  if                            { TokenIf pos }
+  then                          { TokenThen pos }
+  else                          { TokenElse pos }
+  while                         { TokenWhile pos }
+  do                            { TokenDo pos }
+  of                            { TokenOf pos }
+  let                           { TokenLet pos }
+  in                            { TokenIn pos }
+  int                           { TokenInt pos int}
+  assign                        { TokenAssign pos }
+  plus                          { TokenPlus pos }
+  minus                         { TokenMinus pos }
+  times                         { TokenTimes pos }
+  div                           { TokenDiv pos }
+  lparen                        { TokenLParen pos }
+  rparen                        { TokenRParen pos }
+  pipe                          { TokenPipe pos }
+  arrow                         { TokenArrow pos }
+  comma                         { TokenComa pos }
+  eq                            { TokenEQ pos }
+  gt                            { TokenGT pos }
+  lt                            { TokenLT pos }
+  lte                           { TokenLTE pos }
+  gte                           { TokenGTE pos }
+  symbol                        { TokenSym pos name }
+  functionDef                   { TokenFunctionDef pos name }
+  comment                       { TokenComment pos comment }
 
 %left eq gt lt lte gte
 %left plus minus
@@ -110,7 +110,7 @@ FunctionApp   : symbol OptionalArgs                                       { Func
 {
 
 parseError :: Token -> Alex a
-parseError _ = alexError "Unexpected end of Input"
+parseError _ = lexError "Unexpected end of Input"
 
 parse :: String -> Either String [Stmt]
 parse s = runAlex s parsebgl

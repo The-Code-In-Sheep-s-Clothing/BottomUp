@@ -1,15 +1,17 @@
 {
 module Lexer where
+
+import Data.List.Split
 }
 
-%wrapper "monad"
+%wrapper "monadUserState"
 
 $digit = 0-9
 $alpha = [a-zA-Z]
 @symbol = $alpha [$alpha $digit \_ \']*
 
 tokens :-
-  $white+                 ;
+  $white+                 { mkL LexWhite }
   "--".*                  { mkL LexComment }
   type                    { mkL LexType }
   if                      { mkL LexIf }
@@ -40,8 +42,25 @@ tokens :-
   $digit+                 { mkL LexInt }
   True                    { mkL LexBool }
   Frue                    { mkL LexBool }
+  .                       { mkL LexError }
 
 {
+
+
+data AlexUserState = AlexUserState
+                   {
+                       readInput :: String
+                   }
+
+alexInitUserState :: AlexUserState
+alexInitUserState =  AlexUserState { readInput = "" }
+
+getLexerReadInputValue :: Alex String
+getLexerReadInputValue = Alex $ \s@AlexState{alex_ust=ust} -> Right (s, readInput ust)
+
+addLexerReadInputValue :: String -> Alex ()
+addLexerReadInputValue ss = Alex $ \s -> Right (s{alex_ust=(alex_ust s){readInput=readInput (alex_ust s) ++ ss}}, ())
+
 
 -- there might be a library for this, but I dont know how to include
 stripFirstWord          :: String -> String
@@ -80,40 +99,46 @@ data Token    = TokenComment {position :: AlexPosn, comment :: String}
               | TokenInt {position :: AlexPosn, int :: Int}
               | TokenBool {position :: AlexPosn, bool :: Bool}
               | TokenEOF
+              | TokenError {position :: AlexPosn, text :: String}
+              | TokenWhite {position :: AlexPosn, text :: String}
               deriving (Eq,Show)
 
 mkL :: LexClass -> AlexInput -> Int -> Alex Token
 mkL c (p, _, _, str) len = let t = take len str
-                          in case c of
-                            LexComment -> return (TokenComment p t)
-                            LexType -> return (TokenType p)
-                            LexIf -> return (TokenIf p)
-                            LexThen -> return (TokenThen p)
-                            LexElse -> return (TokenElse p)
-                            LexWhile -> return (TokenWhile p)
-                            LexDo -> return (TokenDo p)
-                            LexOf -> return (TokenOf p)
-                            LexLet -> return (TokenLet p)
-                            LexIn -> return (TokenIn p)
-                            LexAssign -> return (TokenAssign p)
-                            LexPlus -> return (TokenPlus p)
-                            LexMinus -> return (TokenMinus p)
-                            LexTimes -> return (TokenTimes p)
-                            LexDiv -> return (TokenDiv p)
-                            LexLParen -> return (TokenLParen p)
-                            LexRParen -> return (TokenRParen p)
-                            LexPipe -> return (TokenPipe p)
-                            LexArrow -> return (TokenArrow p)
-                            LexComa -> return (TokenComa p)
-                            LexEQ -> return (TokenEQ p)
-                            LexGT -> return (TokenGT p)
-                            LexLT -> return (TokenLT p)
-                            LexLTE -> return (TokenLTE p)
-                            LexGTE -> return (TokenGTE p)
-                            LexSym -> return (TokenSym p t)
-                            LexFunctionDef -> return (TokenFunctionDef p (stripFirstWord t))
-                            LexInt -> return ( TokenInt p ((read t) :: Int))
-                            LexBool -> return ( TokenBool p (if t == "true" then True else False))
+                          in do
+                            addLexerReadInputValue t
+                            case c of
+                              LexComment -> return (TokenComment p t)
+                              LexType -> return (TokenType p)
+                              LexIf -> return (TokenIf p)
+                              LexThen -> return (TokenThen p)
+                              LexElse -> return (TokenElse p)
+                              LexWhile -> return (TokenWhile p)
+                              LexDo -> return (TokenDo p)
+                              LexOf -> return (TokenOf p)
+                              LexLet -> return (TokenLet p)
+                              LexIn -> return (TokenIn p)
+                              LexAssign -> return (TokenAssign p)
+                              LexPlus -> return (TokenPlus p)
+                              LexMinus -> return (TokenMinus p)
+                              LexTimes -> return (TokenTimes p)
+                              LexDiv -> return (TokenDiv p)
+                              LexLParen -> return (TokenLParen p)
+                              LexRParen -> return (TokenRParen p)
+                              LexPipe -> return (TokenPipe p)
+                              LexArrow -> return (TokenArrow p)
+                              LexComa -> return (TokenComa p)
+                              LexEQ -> return (TokenEQ p)
+                              LexGT -> return (TokenGT p)
+                              LexLT -> return (TokenLT p)
+                              LexLTE -> return (TokenLTE p)
+                              LexGTE -> return (TokenGTE p)
+                              LexSym -> return (TokenSym p t)
+                              LexFunctionDef -> return (TokenFunctionDef p (stripFirstWord t))
+                              LexInt -> return ( TokenInt p ((read t) :: Int))
+                              LexBool -> return ( TokenBool p (if t == "true" then True else False))
+                              LexError -> return ( TokenError p t)
+                              LexWhite -> return ( TokenWhite p t)
 
 
 -- No idea why I have to write this myself. Documentation doesn't mention it.
@@ -150,8 +175,23 @@ data LexClass = LexComment
               | LexInt
               | LexBool
               | LexEOF
+              | LexError
+              | LexWhite
               deriving (Eq,Show)
 
-lexwrap = (alexMonadScan >>=)
+
+showPosn (AlexPn _ line col) = "Error on line: " ++ show line ++ " column: " ++  show col ++ "\n"
+lexError s = do
+  ((AlexPn a line col),_, _, rem_in) <- alexGetInput
+  read_in <- getLexerReadInputValue
+  error $ showPosn (AlexPn a line col) ++ splitOn "\n" (read_in ++ rem_in) !! (line - 1) ++ "\n" ++ (replicate (col - 2) ' ') ++ "^"
+
+lexwrap :: (Token -> Alex a) -> Alex a
+lexwrap cont = do
+    token <- alexMonadScan
+    case token of
+      TokenError posn text -> lexError $ "unexpected " ++ text
+      TokenWhite _ _ -> lexwrap cont
+      _ -> cont token
 
 }

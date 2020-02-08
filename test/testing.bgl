@@ -2,7 +2,7 @@ type Board = Array(3,3) of Content
 type Input = Position
 
 initialBoard : Board
-initialBoard(x, y) = Empty
+initialBoard(x, y) = Empty !
 
 goFirst : Player
 goFirst = A

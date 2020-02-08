@@ -7,7 +7,7 @@ Main
 output.hs
 dist
 dist/*
-dist-newstye
+dist-newstyle
 dist-newstyle/*
 *.local
 *.local~

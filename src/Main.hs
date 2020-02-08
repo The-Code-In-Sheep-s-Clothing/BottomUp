@@ -27,12 +27,16 @@ run e = eval e emptyEnv
 main :: IO ()
 main = do
     s <- getContents
-    let tokens = scanTokens s
-    print tokens
-    let ast = parseCalc (tokens)
-    print ast
+    let parsedEither = parse s
+
+    case parsedEither of
+        Left s -> print s
+        Right ast -> do
+            print ast
+            writeFile "output.hs" (compile ast)
+    
     -- let (valid, error) = check_start(ast)
     -- putStrLn error
-    writeFile "output.hs" (compile ast)
+   
     --print (run ast)
     

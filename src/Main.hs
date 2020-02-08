@@ -3,7 +3,7 @@ import Parser
 import Lexer
 import Compiler
 import Ast
-import TypeChecker
+-- import TypeChecker
 
 type Env = String -> [Stmt]
 emptyEnv = error "Not found"
@@ -27,12 +27,16 @@ run e = eval e emptyEnv
 main :: IO ()
 main = do
     s <- getContents
-    let tokens = scanTokens s
-    -- print tokens
-    let ast = parseCalc (tokens)
-    print ast
-    let (valid, error) = check_start(ast)
-    putStrLn error
-    --writeFile "output.hs" (compile ast)
+    let parsedEither = parse s
+
+    case parsedEither of
+        Left s -> print s
+        Right ast -> do
+            print ast
+            writeFile "output.hs" (compile ast)
+    
+    -- let (valid, error) = check_start(ast)
+    -- putStrLn error
+   
     --print (run ast)
     

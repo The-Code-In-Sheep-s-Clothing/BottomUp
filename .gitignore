@@ -1,9 +1,9 @@
 *.hi
 *.o
 *.info
-Grammar.hs
-Tokens.hs
-Calc
+Parser.hs
+Lexer.hs
+Main
 output.hs
 dist
 dist/*

@@ -2,6 +2,7 @@
 module Lexer where
 
 import Data.List.Split
+import System.Exit
 }
 
 %wrapper "monadUserState"
@@ -179,18 +180,21 @@ data LexClass = LexComment
               | LexWhite
               deriving (Eq,Show)
 
+data LexerError = LexerError String
+instance Show LexerError where
+  show (LexerError str) = str
 
 showPosn (AlexPn _ line col) = "Error on line: " ++ show line ++ " column: " ++  show col ++ "\n"
 lexError s = do
   ((AlexPn a line col),_, _, rem_in) <- alexGetInput
   read_in <- getLexerReadInputValue
-  error $ showPosn (AlexPn a line col) ++ splitOn "\n" (read_in ++ rem_in) !! (line - 1) ++ "\n" ++ (replicate (col - 2) ' ') ++ "^"
+  error $ "\n" ++ s ++ showPosn (AlexPn a line col) ++ splitOn "\n" (read_in ++ rem_in) !! (line - 1) ++ "\n" ++ (replicate (col - 2) ' ') ++ "^"
 
 lexwrap :: (Token -> Alex a) -> Alex a
 lexwrap cont = do
     token <- alexMonadScan
     case token of
-      TokenError posn text -> lexError $ "unexpected " ++ text
+      TokenError posn text -> lexError $ "unexpected character " ++ text ++ "\n"
       TokenWhite _ _ -> lexwrap cont
       _ -> cont token
 

@@ -2,7 +2,7 @@ type Board = Array(3,3) of Content
 type Input = Position
 
 initialBoard : Board
-initialBoard(x, y) = Empty !
+initialBoard(x, y) = Empty
 
 goFirst : Player
 goFirst = A
@@ -13,8 +13,8 @@ threeInARow(b) = or(inARow(3,A,b),inARow(3,B,b))
 loop : (Board,Player) -> (Board,Player)
 loop(b,p) = while not(gameOver(b)) do tryMove(b,p)
 
--- Game over function
-gameOver : (Board,Player) -> Bool
+-- Game over function !
+gameOver : (Board,Player) -> Bool !
 gameOver(b,p) = or(threeInARow(b),isFull(b))
 
 isValid : (Board,Position) -> Bool

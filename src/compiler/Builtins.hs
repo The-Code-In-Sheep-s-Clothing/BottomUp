@@ -16,7 +16,6 @@ type State    = (Board Content,Player)
 data Content  = Occupied Player | Empty deriving (Show,Eq)
 type Position = (Int,Int)
 
-
 --
 -- Generic functions on boards
 --
@@ -24,7 +23,7 @@ type Row c = [c]
 
 -- Create a board from rows, using bottom-up numbering of rows
 --
-board :: (Int,Int) -> c -> Board c
+board :: (Int,Int) -> Content -> Board
 board size c = listArray ((1,1),size) (Prelude.repeat c)
 
 byRows :: [[c]] -> Board c

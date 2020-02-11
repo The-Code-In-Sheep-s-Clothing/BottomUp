@@ -6,6 +6,7 @@ import qualified Data.Map as Map
 import Control.Monad.State
 import Ast
 
+-- List of type names and their extended type symbols
 type Env = [(String, [String])]
 type StateRet = State Env String
 
@@ -22,15 +23,38 @@ x1 <++> x2 = (++) <$> x1 <*> x2
 intercalateM :: (Monad m) => String -> [m String] -> m String
 intercalateM s l = sequence l >>= \x -> return (intercalate s x)
 
+imports = ["import Data.Array",
+           "import Data.List",
+           "import System.IO.Unsafe",
+           "import Data.Char",
+           "import System.IO"]
 
--- Compilation Code
+builtin_types = ["data Player = A | B",
+                 "data Grid = Array (Int, Int) deriving Show",
+                 "type Board = Array (Int, Int) Content",
+                 "type Position = (Int, Int)"]
+
+builtin_funcs = ["board :: (Int,Int) -> Content -> Board
+                  board size c = listArray ((1,1),size) (Prelude.repeat c)"]
+
+-- Helper functions to compile all the builtins
+compile_imports :: String
+compile_imports = "-- Imports section\n" ++ (intercalate "\n" imports) ++ "\n\n"
+
+compile_builtin_types :: String
+compile_builtin_types = "--Builtin types\n" ++ (intercalate "\n" builtin_types) ++ "\n\n"
+
+compile_builtin_funcs :: 
+
+-- Compilation code from AST
 compile :: [Stmt] -> String
-compile x = "import Builtins\n" ++ 
+compile x = "import Builtins\n" ++ compile_imports ++ compile_builtin_types ++
     let (res, st) = runState (compile_stmts x) [] in
-        compile_state st ++ "\n" ++ res
+        compile_state st ++ "\n" ++ "-- Generated User code\n" ++ res ++
+        "-- Builtin Functions\n" compile_builtin_funcs st
 
 compile_state :: Env -> String
-compile_state e = intercalate "\n" (map compile_single_state e)
+compile_state e = "-- User defined types\n" ++ intercalate "\n" (map compile_single_state e) ++ "\n"
 
 compile_single_state :: (String, [String]) -> String
 compile_single_state (s, l) = "data " ++ s ++ " = " ++ s ++ "Con " ++ 
@@ -81,15 +105,11 @@ compile_equation f (Equation s e st) = (s ++ " " ++ compile_expr e ++ "=") ++> c
 -- Type/data declarations (bo/equationard, input)
 compile_typedef :: Stmt -> StateRet
 compile_typedef (TypedefFunc "Board" e t) = 
-    if evalState (compile_type t) [] == "Content" then
-        return ("type UserContent = Content\n" ++ "board_size = " ++ compile_expr e)
-    else
-        "data UserContent = " ++>
-        compile_type t <++ ("\n" ++
-        "board_size = " ++
-        compile_expr e)
-compile_typedef (Typedef "Input" t) = 
-    "type Input = " ++> compile_type t
+    "type Content = " ++>
+    compile_type t <++ ("\n" ++
+    "board_size = " ++
+    compile_expr e)
+compile_typedef (Typedef "Input" t) = "type Input = " ++> compile_type t
 compile_typedef (Typedef s t) = ("type " ++ s ++ " = ") ++> compile_type t
 
 compile_type :: Type -> StateRet
@@ -119,7 +139,7 @@ compile_ttype :: Ttype -> StateRet
 compile_ttype (Ttype x) = "(" ++> (intercalateM "," (map compile_xtype x)) <++ ")"
 
 compile_btype :: Btype -> String
-compile_btype (Btype "Board") = "Board UserContent"
+-- compile_btype (Btype "Board") = "Board Content"
 compile_btype (Btype b) = b
 
 compile_expr :: Expr -> String

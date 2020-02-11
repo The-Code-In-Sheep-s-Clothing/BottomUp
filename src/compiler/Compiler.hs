@@ -4,9 +4,12 @@ import Data.List.Split
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Monad.State
+import qualified Data.Text as T
 import Ast
+import Builtins
 
-type Env = [(String, [String])]
+-- List of type names and their extended type symbols
+type Env = [(String, String, [String])]
 type StateRet = State Env String
 
 -- Append string to functor
@@ -22,20 +25,30 @@ x1 <++> x2 = (++) <$> x1 <*> x2
 intercalateM :: (Monad m) => String -> [m String] -> m String
 intercalateM s l = sequence l >>= \x -> return (intercalate s x)
 
+-- Helper functions to compile all the builtins
+compile_imports :: String
+compile_imports = "-- Imports section\n" ++ (intercalate "\n" imports) ++ "\n\n"
 
--- Compilation Code
+compile_builtin_types :: String
+compile_builtin_types = "-- Builtin types\n" ++ (intercalate "\n" builtin_types) ++ "\n\n"
+
+compile_builtin_funcs :: Env -> String
+compile_builtin_funcs st = "-- Builtin functions\n" ++ (intercalate "\n\n" builtin_funcs)
+
+-- Compilation code from AST
 compile :: [Stmt] -> String
-compile x = "import Builtins\n" ++ 
+compile x = compile_imports ++ compile_builtin_types ++
     let (res, st) = runState (compile_stmts x) [] in
-        compile_state st ++ "\n" ++ res
+        compile_state st ++ "\n" ++ "-- Generated User code\n" ++ res ++
+        compile_builtin_funcs st
 
 compile_state :: Env -> String
-compile_state e = intercalate "\n" (map compile_single_state e)
+compile_state e = "-- User defined types\n" ++ intercalate "\n" (map compile_single_state e) ++ "\n"
 
-compile_single_state :: (String, [String]) -> String
-compile_single_state (s, l) = "data " ++ s ++ " = " ++ s ++ "Con " ++ 
-    head (splitOn "_" s) ++ "|" ++ intercalate " | " l ++
-    " deriving (Show)"
+compile_single_state :: (String, String, [String]) -> String
+compile_single_state (s, c, l) = "data " ++ s ++ " = " ++ s ++ "Con " ++ 
+    c ++ "|" ++ intercalate " | " l ++
+    " deriving (Show, Eq)"
 
 compile_stmts :: [Stmt] -> StateRet
 compile_stmts [] = return ""
@@ -44,8 +57,8 @@ compile_stmts (x:xs) = (++) <$> (compile_stmt "" x <++ "\n") <*> compile_stmts x
 compile_stmt :: String -> Stmt -> StateRet
 compile_stmt f (SExpr (ESymbol e)) = do
     cur_state <- get
-    if elem f (map fst cur_state) then
-        if elem e (get_snd_state f cur_state) then
+    if elem f (map (\(a,_,_) -> a) cur_state) then
+        if elem e (get_state_xtypes f cur_state) then
             return (e)
         else
             return (f ++ "Con " ++ e)
@@ -81,15 +94,9 @@ compile_equation f (Equation s e st) = (s ++ " " ++ compile_expr e ++ "=") ++> c
 -- Type/data declarations (bo/equationard, input)
 compile_typedef :: Stmt -> StateRet
 compile_typedef (TypedefFunc "Board" e t) = 
-    if evalState (compile_type t) [] == "Content" then
-        return ("type UserContent = Content\n" ++ "board_size = " ++ compile_expr e)
-    else
-        "data UserContent = " ++>
-        compile_type t <++ ("\n" ++
-        "board_size = " ++
-        compile_expr e)
-compile_typedef (Typedef "Input" t) = 
-    "type Input = " ++> compile_type t
+    add_content_to_state t <++ 
+    ("board_size = " ++ compile_expr e)
+compile_typedef (Typedef "Input" t) = "type Input = " ++> compile_type t
 compile_typedef (Typedef s t) = ("type " ++ s ++ " = ") ++> compile_type t
 
 compile_type :: Type -> StateRet
@@ -109,17 +116,30 @@ compile_xtype (Xtype b l) = do
     cur_state <- get
     let type_list = [compile_btype b] ++ l
     let t = intercalate "_" type_list
-    if not (elem t (map fst cur_state)) then do
-        put (cur_state ++ [(t, drop 1 type_list)])
+    if not (elem t (map (\(a,_,_) -> a) cur_state)) then do
+        put (cur_state ++ [(t, compile_btype b, drop 1 type_list)])
         return t
     else do
         return t
+
+add_content_to_state :: Type -> StateRet
+add_content_to_state (Ptype' (Xtype' (Xtype b l))) = do
+    cur_state <- get
+    let type_list = [compile_btype b] ++ l
+    let t = "Content"
+    if not (elem t (map (\(a,_,_) -> a) cur_state)) then do
+        put (cur_state ++ [("Content", (compile_btype b), drop 1 type_list)])
+        return ""
+    else do
+        return ""
+-- TODO: Should this be possible?
+add_content_to_state _ = return "Not Possible"
 
 compile_ttype :: Ttype -> StateRet
 compile_ttype (Ttype x) = "(" ++> (intercalateM "," (map compile_xtype x)) <++ ")"
 
 compile_btype :: Btype -> String
-compile_btype (Btype "Board") = "Board UserContent"
+-- compile_btype (Btype "Board") = "Board Content"
 compile_btype (Btype b) = b
 
 compile_expr :: Expr -> String
@@ -162,6 +182,7 @@ get_return_type :: Type -> String
 get_return_type (Ptype' p) = evalState (compile_ptype p) []
 get_return_type (Ftype' (Ftype _ p2)) = evalState (compile_ptype p2) []
 
-get_snd_state :: String -> Env -> [String]
-get_snd_state s [] = []
-get_snd_state s (e:es) = if fst e == s then snd e else get_snd_state s es
+get_state_xtypes :: String -> Env -> [String]
+get_state_xtypes s [] = []
+get_state_xtypes s (e:es) = let (f,sd,t) = e in 
+    if f == s then t else get_state_xtypes s es

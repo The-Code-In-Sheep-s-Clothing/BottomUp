@@ -1,170 +1,127 @@
 module Builtins where
 
-import Prelude hiding (repeat,until)
-import qualified Prelude (repeat)
-import Data.Array
-import Data.List (isInfixOf)
-import System.IO.Unsafe (unsafePerformIO)
-import Data.Char (digitToInt)
-import Debug.Trace
-import System.IO
+imports = [
+    "import Data.Array",
+    "import Data.List",
+    "import System.IO.Unsafe",
+    "import Data.Char",
+    "import System.IO"]
 
-data Player   = A | B deriving (Eq,Show)
-data Grid     = Array (Int,Int) deriving(Show)
-type Board c  = Array (Int,Int) c
-type State    = (Board Content,Player)
-data Content  = Occupied Player | Empty deriving (Show,Eq)
-type Position = (Int,Int)
+builtin_types = [
+    "data Player = A | B deriving (Show, Eq)",
+    "data Grid = Array (Int, Int) deriving Show",
+    "type Board = Array (Int, Int) Content",
+    "type Position = (Int, Int)",
+    "type Row = [Content]",
+    "type BoardProperty = Board -> Bool"]
 
---
--- Generic functions on boards
---
-type Row c = [c]
+builtin_funcs = [
+    "board :: (Int,Int) -> Content -> Board\n\
+    \board size c = listArray ((1,1),size) (Prelude.repeat c)",
 
--- Create a board from rows, using bottom-up numbering of rows
---
-board :: (Int,Int) -> Content -> Board
-board size c = listArray ((1,1),size) (Prelude.repeat c)
+    "inARow :: (Int,Player,Board) -> Bool\n\
+    \inARow (n,p,b) = (any (isInfixOf (n `ofKind` p)) . allRows) b",
 
-byRows :: [[c]] -> Board c
-byRows rows = listArray ((1,1),size) (concat (reverse rows))
-              where size = (length rows,length (head rows))
+    "ofKind :: Int -> Player -> Row\n\
+    \n `ofKind` p = map ContentCon (replicate n p)",
 
-getBoardContent :: (Board c, Position) -> c
-getBoardContent (b,p) = b!p
+    "row :: Board -> Int -> Row\n\
+    \row b y = [b!(y,x) | x <- [1..maxCol b]]",
 
-printBoard :: Show c => Board c -> String
-printBoard b = printBoardHelp b (bounds b) (maxLength b (bounds b))
+    "rows :: Board -> [Row]\n\
+    \rows b = [row b r | r <- [1..maxRow b]]",
 
-printBoardHelp :: Show c => Board c -> ((Int, Int), (Int, Int)) -> Int -> String
-printBoardHelp board ((a, b), (c, d)) l = spaceString (board!(a, b)) l ++ 
-                                          if (a < c || b < d) then
-                                            if(b < d) then
-                                            printBoardHelp board ((a, b+1), (c, d)) l 
-                                            else "\n" ++ printBoardHelp board ((a+1, 1), (c, d)) l
-                                          else ""
+    "col :: Board -> Int -> Row\n\
+    \col b x = [b!(y,x) | y <- [1..maxRow b]]",
 
-maxLength :: Show c => Board c -> ((Int, Int), (Int, Int)) -> Int
-maxLength board ((a, b), (c, d)) = max (length (show (board!(a,b)))) (if (a < c || b < d) then
-                                                           if(b < d) then
-                                                           maxLength board ((a, b+1), (c, d))
-                                                           else maxLength board ((a+1, 1), (c, d))
-                                                          else 0)
-spaceString :: Show c => c -> Int -> String
-spaceString c l = show c ++ extraSpaces (length (show c)) (l+1)
+    "cols :: Board -> [Row]\n\
+    \cols b = [col b c | c <- [1..maxCol b]]",
 
-extraSpaces :: Int -> Int -> String
-extraSpaces m l = if (m == l) then "" else " " ++ extraSpaces (m+1) l 
+    "diagsUp :: Board -> (Int,Int) -> Row\n\
+    \diagsUp b (y,x) | y > maxRow b || x > maxCol b = []\n\
+    \                | otherwise = b!(y,x):diagsUp b (y+1,x+1)",
 
-while :: (t -> Bool) -> (t -> t) -> t -> t
-while cond exe v = if (cond) v then while cond exe (exe v) else v
+    "diagsDown :: Board -> (Int,Int) -> Row\n\
+    \diagsDown b (y,x) | y < 1 || x < 1 = []\n\
+    \                  | otherwise = b!(y,x):diagsDown b (y-1,x-1)",
 
-next :: Player -> Player
-next A = B
-next B = A
+    "diags :: Board -> [Row]\n\
+    \diags b = [diagsUp b (1,x) | x <- [1..maxCol b]] ++\n\
+    \          [diagsUp b (y,1) | y <- [2..maxRow b]] ++\n\
+    \          [diagsDown b (maxRow b,x) | x <- [1..maxCol b]] ++\n\
+    \          [diagsDown b (y,1) | y <- [1..maxRow b-1]]",
 
-place :: (Player, Board Content, Position) -> Board Content
-place (p, b, pos) = b // [(pos, Occupied p)]
+    "allRows :: Board -> [Row]\n\
+    \allRows b = rows b ++ cols b ++ diags b",
 
-getInts :: Show c => Board c -> IO (Int, Int)
-getInts b = do
-    putStrLn $ printBoard b
-    x <- getInt
-    y <- getInt
-    return (x, y)
+    "size :: Board -> (Int,Int)\n\
+    \size = snd . bounds",
 
-getInt :: IO Int
-getInt = do
-    hFlush stdout
-    i <- getLine
-    return $ read i
+    "maxRow :: Board -> Int\n\
+    \maxRow = fst . size",
 
-input :: Show c => Board c -> [Int] -> Position
-input b l = unsafePerformIO $ getInts b
+    "maxCol :: Board -> Int\n\
+    \maxCol = snd . size",
 
--- Board size
---
-size :: Board c -> (Int,Int)
-size = snd . bounds
+    "place :: (Player, Board, Position) -> Board\n\
+    \place (p, b, pos) = b // [(pos, ContentCon p)]",
 
-maxRow :: Board c -> Int
-maxRow = fst . size
+    "next :: Player -> Player\n\
+    \next A = B\n\
+    \next B = A",
 
-maxCol :: Board c -> Int
-maxCol = snd . size
+    "while :: (t -> Bool) -> (t -> t) -> t -> t\n\
+    \while cond exe v = if (cond) v then while cond exe (exe v) else v",
 
--- Extracting rows, columns, and diagonals
---
-row :: Board c -> Int -> Row c
-row b y = [b!(y,x) | x <- [1..maxCol b]]
+    "getInts :: Board -> IO (Int, Int)\n\
+    \getInts b = do\n\
+    \   putStrLn $ printBoard b\n\
+    \   x <- getInt\n\
+    \   y <- getInt\n\
+    \   return (x, y)",
 
-rows :: Board c -> [Row c]
-rows b = [row b r | r <- [1..maxRow b]]
+    "getInt :: IO Int\n\
+    \getInt = do\n\
+    \   hFlush stdout\n\
+    \   i <- getLine\n\
+    \   return $ read i",
 
-col :: Board c -> Int -> Row c
-col b x = [b!(y,x) | y <- [1..maxRow b]]
+    "input :: Board -> [Int] -> Position\n\
+    \input b l = unsafePerformIO $ getInts b",
 
-cols :: Board c -> [Row c]
-cols b = [col b c | c <- [1..maxCol b]]
+    "byRows :: [[Content]] -> Board\n\
+    \byRows rows = listArray ((1,1),size) (concat (reverse rows))\n\
+    \           where size = (length rows,length (head rows))",
 
-diagsUp :: Board c -> (Int,Int) -> Row c
-diagsUp b (y,x) | y > maxRow b || x > maxCol b = []
-               | otherwise = b!(y,x):diagsUp b (y+1,x+1)
+    "getBoardContent :: (Board, Position) -> Content\n\
+    \getBoardContent (b,p) = b!p",
 
-diagsDown :: Board c -> (Int,Int) -> Row c
-diagsDown b (y,x) | y < 1 || x < 1 = []
-                 | otherwise = b!(y,x):diagsDown b (y-1,x-1)
+    "printBoard :: Board -> String\n\
+    \printBoard b = printBoardHelp b (bounds b) (maxLength b (bounds b))",
 
-diags :: Board c -> [Row c]
-diags b = [diagsUp b (1,x) | x <- [1..maxCol b]] ++
-          [diagsUp b (y,1) | y <- [2..maxRow b]] ++
-          [diagsDown b (maxRow b,x) | x <- [1..maxCol b]] ++
-          [diagsDown b (y,1) | y <- [1..maxRow b-1]]
+    "printBoardHelp :: Board -> ((Int, Int), (Int, Int)) -> Int -> String\n\
+    \printBoardHelp board ((a, b), (c, d)) l = spaceString (board!(a, b)) l ++\n\
+    \                                       if (a < c || b < d) then\n\
+    \                                           if(b < d) then\n\
+    \                                           printBoardHelp board ((a, b+1), (c, d)) l\n\
+    \                                           else \"\\n\" ++ printBoardHelp board ((a+1, 1), (c, d)) l\n\
+    \                                       else \"\"",
 
-allRows :: Board c -> [Row c]
-allRows b = rows b ++ cols b ++ diags b
+    "maxLength :: Board -> ((Int, Int), (Int, Int)) -> Int\n\
+    \maxLength board ((a, b), (c, d)) = max (length (show (board!(a,b)))) (if (a < c || b < d) then\n\
+    \                                                       if(b < d) then\n\
+    \                                                       maxLength board ((a, b+1), (c, d))\n\
+    \                                                       else maxLength board ((a+1, 1), (c, d))\n\
+    \                                                       else 0)",
 
+    "spaceString :: Show c => c -> Int -> String\n\
+    \spaceString c l = show c ++ extraSpaces (length (show c)) (l+1)",
 
--- Printing a board
---
--- showRow :: Game -> Row -> String
--- showRow g = concatMap (output g)
+    "extraSpaces :: Int -> Int -> String\n\
+    \extraSpaces m l = if (m == l) then \"\" else \" \" ++ extraSpaces (m+1) l",
 
--- maxRows :: Board -> Int
--- maxRows = fst . snd . bounds
+    "open :: Board -> [Position]\n\
+    \open g = [p | (p,v) <- assocs g, v==Empty]",
 
--- showBoard :: Game -> Board -> String
--- showBoard g b = unlines [showRow g (row b r) | r <- reverse [1..maxRows b]]
-
--- printBoard :: Game -> Board -> IO ()
--- printBoard g = putStrLn . showBoard g
-
-
--- Conditions / board properties
---
-type BoardProperty = Board Content -> Bool
-
-(&&&) :: BoardProperty -> BoardProperty -> BoardProperty
-p &&& q = \b -> p b && q b
-
-(|||) :: BoardProperty -> BoardProperty -> BoardProperty
-p ||| q = \b -> p b || q b
-
-open :: Board Content -> [Position]
-open g = [p | (p,v) <- assocs g, v==Empty]
-
-isFull :: BoardProperty
-isFull = null . open
-
--- (!!!) :: Board -> [Position] -> [Content]
--- g !!! ps = map (g!) ps
-
-ofKind :: Int -> Player -> Row Content
--- ofKind n = map Occupied . replicate n
-n `ofKind` p = map Occupied (replicate n p)
-
--- fourAs = 4 `ofKind` A
--- fourBs = 4 `ofKind` B
-
-inARow :: (Int,Player,Board Content) -> Bool
-inARow (n,p,b) = (any (isInfixOf (n `ofKind` p)) . allRows) b
+    "isFull :: BoardProperty\n\
+    \isFull = null . open"]

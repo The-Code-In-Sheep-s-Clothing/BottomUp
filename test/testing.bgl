@@ -13,7 +13,7 @@ threeInARow(b) = or(inARow(3,A,b),inARow(3,B,b))
 loop : (Board,Player) -> (Board,Player)
 loop(b,p) = while not(gameOver(b)) do tryMove(b,p)
 
--- Game over function !
+-- Game over function
 gameOver : (Board,Player) -> Bool 
 gameOver(b,p) = or(threeInARow(b),isFull(b))
 

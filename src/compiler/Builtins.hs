@@ -34,18 +34,27 @@ getBoardContent :: (Board c, Position) -> c
 getBoardContent (b,p) = b!p
 
 printBoard :: Show c => Board c -> String
-printBoard b = printBoardHelp b (bounds b)
+printBoard b = printBoardHelp b (bounds b) (maxLength b (bounds b))
 
-printBoardHelp :: Show c => Board c -> ((Int, Int), (Int, Int)) -> String
-printBoardHelp board ((a, b), (c, d)) = spaceString (board!(a, b)) ++ 
-					if (a < c || b < d) then
-						if(b < d) then
-						printBoardHelp board ((a, b+1), (c, d)) 
-						else "\n" ++ printBoardHelp board ((a+1, 1), (c, d))
-					else ""
+printBoardHelp :: Show c => Board c -> ((Int, Int), (Int, Int)) -> Int -> String
+printBoardHelp board ((a, b), (c, d)) l = spaceString (board!(a, b)) l ++ 
+                                          if (a < c || b < d) then
+                                            if(b < d) then
+                                            printBoardHelp board ((a, b+1), (c, d)) l 
+                                            else "\n" ++ printBoardHelp board ((a+1, 1), (c, d)) l
+                                          else ""
 
-spaceString :: Show c => c -> String
-spaceString c = show c
+maxLength :: Show c => Board c -> ((Int, Int), (Int, Int)) -> Int
+maxLength board ((a, b), (c, d)) = max (length (show (board!(a,b)))) (if (a < c || b < d) then
+                                                           if(b < d) then
+                                                           maxLength board ((a, b+1), (c, d))
+                                                           else maxLength board ((a+1, 1), (c, d))
+                                                          else 0)
+spaceString :: Show c => c -> Int -> String
+spaceString c l = show c ++ extraSpaces (length (show c)) (l+1)
+
+extraSpaces :: Int -> Int -> String
+extraSpaces m l = if (m == l) then "" else " " ++ extraSpaces (m+1) l 
 
 while :: (t -> Bool) -> (t -> t) -> t -> t
 while cond exe v = if (cond) v then while cond exe (exe v) else v

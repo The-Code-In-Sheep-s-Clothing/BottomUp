@@ -69,6 +69,40 @@ stripFirstWord (' ':xs) = ""
 stripFirstWord (x:xs)   = x : stripFirstWord xs
 stripFirstWord _        = ""
 
+prettyToken                          :: Token -> String
+prettyToken ( TokenComment _ _ )     = "Comment"
+prettyToken ( TokenType _ )          = "type Keyword"
+prettyToken ( TokenIf _ )            = "if Keyword"   
+prettyToken ( TokenThen _ )          = "then Keyword"
+prettyToken ( TokenElse _ )          = "else Keyword"
+prettyToken ( TokenWhile _ )         = "while Keyword"
+prettyToken ( TokenDo _ )            = "do Keyword"
+prettyToken ( TokenOf _ )            = "of Keyword"
+prettyToken ( TokenLet _ )           = "let Keyword"
+prettyToken ( TokenIn _ )            = "in Keyword"
+prettyToken ( TokenAssign _ )        = "="
+prettyToken ( TokenPlus _ )          = "+"
+prettyToken ( TokenMinus _ )         = "-"
+prettyToken ( TokenTimes _ )         = "*"
+prettyToken ( TokenDiv _ )           = "/"
+prettyToken ( TokenLParen _ )        = "("
+prettyToken ( TokenRParen _ )        = ")"
+prettyToken ( TokenPipe _ )          = "|"
+prettyToken ( TokenArrow _ )         = "->"
+prettyToken ( TokenComa _ )          = ","
+prettyToken ( TokenEQ _ )            = "=="
+prettyToken ( TokenGT _ )            = "<"
+prettyToken ( TokenLT _ )            = ">"
+prettyToken ( TokenLTE _ )           = ">="
+prettyToken ( TokenGTE _ )           = "<="
+prettyToken ( TokenSym _ _ )         = "symbol (Type or variable name)"
+prettyToken ( TokenFunctionDef _ _ ) = "Function Definition"
+prettyToken ( TokenInt _  _ )        = "Integer"
+prettyToken ( TokenBool _ _ )        = "Boolean"
+prettyToken ( TokenEOF )             = "End of File"
+prettyToken ( TokenError _ _ )       = "Lexical Error"
+prettyToken ( TokenWhite _ _ )       = "Whitespace"
+
 -- The token type:
 data Token    = TokenComment      { position :: AlexPosn, comment :: String }
               | TokenType         { position :: AlexPosn }
@@ -184,17 +218,20 @@ data LexerError = LexerError String
 instance Show LexerError where
   show (LexerError str) = str
 
+showPosn ::  AlexPosn -> String
 showPosn (AlexPn _ line col) = "Error on line: " ++ show line ++ " column: " ++  show col ++ "\n"
-lexError s = do
+
+printError :: String -> Alex a
+printError s = do
   ((AlexPn a line col),_, _, rem_in) <- alexGetInput
   read_in <- getLexerReadInputValue
-  error $ "\n" ++ s ++ showPosn (AlexPn a line col) ++ splitOn "\n" (read_in ++ rem_in) !! (line - 1) ++ "\n" ++ (replicate (col - 2) ' ') ++ "^"
+  alexError $ "\n" ++ s ++ showPosn (AlexPn a line col) ++ splitOn "\n" (read_in ++ rem_in) !! (line - 1) ++ "\n" ++ (replicate (col - 2) ' ') ++ "^"
 
 lexwrap :: (Token -> Alex a) -> Alex a
 lexwrap cont = do
     token <- alexMonadScan
     case token of
-      TokenError posn text -> lexError $ "unexpected character " ++ text ++ "\n"
+      TokenError posn text -> printError $ "unexpected character " ++ text ++ "\n"
       TokenWhite _ _ -> lexwrap cont
       _ -> cont token
 

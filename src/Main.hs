@@ -30,7 +30,7 @@ main = do
     let parsedEither = parse s
 
     case parsedEither of
-        Left s -> print s
+        Left s -> putStrLn s
         Right ast -> do
             print ast
             writeFile "output.hs" (compile ast)

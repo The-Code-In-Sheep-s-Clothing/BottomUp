@@ -2,11 +2,15 @@
 module Parser where
 import Lexer
 import Ast
+import Data.List
 }
 
 %name parsebgl
 %tokentype { Token }
+
+%errorhandlertype explist
 %error { parseError }
+
 %monad {Alex}
 %lexer{lexwrap}{TokenEOF}
 
@@ -109,8 +113,48 @@ FunctionApp   : symbol OptionalArgs                                       { Func
 
 {
 
-parseError :: Token -> Alex a
-parseError _ = lexError "Unexpected end of Input"
+
+
+
+prettyParseSymbol               :: String -> String
+prettyParseSymbol "type"        = "type"       
+prettyParseSymbol "if"          = "if"         
+prettyParseSymbol "then"        = "then"       
+prettyParseSymbol "else"        = "else"       
+prettyParseSymbol "while"       = "while"      
+prettyParseSymbol "do"          = "do"         
+prettyParseSymbol "of"          = "of"         
+prettyParseSymbol "let"         = "let"        
+prettyParseSymbol "in"          = "in"         
+prettyParseSymbol "int"         = "Integer Type"        
+prettyParseSymbol "assign"      = "="     
+prettyParseSymbol "plus"        = "+"       
+prettyParseSymbol "minus"       = "-"      
+prettyParseSymbol "times"       = "*"      
+prettyParseSymbol "div"         = "/"        
+prettyParseSymbol "lparen"      = "("     
+prettyParseSymbol "rparen"      = ")"     
+prettyParseSymbol "pipe"        = "|"       
+prettyParseSymbol "arrow"       = "->"      
+prettyParseSymbol "comma"       = ","      
+prettyParseSymbol "eq"          = "=="         
+prettyParseSymbol "gt"          = "<"         
+prettyParseSymbol "lt"          = ">"         
+prettyParseSymbol "lte"         = ">="        
+prettyParseSymbol "gte"         = "<="        
+prettyParseSymbol "symbol"      = "symbol (Type or variable name)"     
+prettyParseSymbol "functionDef" = "Function Definition"
+prettyParseSymbol "comment"     = "Comment"    
+
+formatExpected   :: [String] -> String
+formatExpected e = intercalate "," $ map prettyParseSymbol e
+
+parseError                              :: (Token, [String]) -> Alex a
+parseError ((TokenEOF), expected)       = printError $ "ERROR: Unexpected End of File: " ++ formatExpected expected ++ "\n"
+parseError ((TokenError p e), expected) = printError $ "ERROR: Token should have been removed in lexer: " ++ formatExpected expected ++ "\n"
+parseError ((TokenWhite p w), expected) = printError $ "ERROR: Token should have been removed in lexer: "  ++ formatExpected expected ++ "\n"
+parseError (tok, expected)              = printError $  "Unexpected " ++ prettyToken tok ++ "\nExpected one of the following: " ++ formatExpected expected ++ "\n"
+parseError x                            = printError $ "Fatal Error: " ++ show x
 
 parse :: String -> Either String [Stmt]
 parse s = runAlex s parsebgl

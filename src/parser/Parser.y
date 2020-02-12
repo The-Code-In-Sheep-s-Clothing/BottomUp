@@ -24,7 +24,7 @@ import Data.List
   of                            { TokenOf pos }
   let                           { TokenLet pos }
   in                            { TokenIn pos }
-  int                           { TokenInt pos int}
+  int                           { TokenInt pos int }
   assign                        { TokenAssign pos }
   plus                          { TokenPlus pos }
   minus                         { TokenMinus pos }
@@ -53,63 +53,63 @@ import Data.List
 Stmts         : Stmt Stmts                                                { [$1] ++ $2 }
               | Stmt                                                      { [$1] }
 
-OptionalArgs  : lparen TupleList rparen                                   { Tuple $2 }
+OptionalArgs  : lparen TupleList rparen                                   { Tuple $2 (tokPosition $1)}
               | lparen Variable rparen                                    { $2 }
-OptionalList  : lparen TupleList rparen                                   { Tuple $2 }
+OptionalList  : lparen TupleList rparen                                   { Tuple $2 (tokPosition $1) }
               | lparen Variable rparen                                    { $2 }
               |                                                           { Empty }
 TupleList     : Variable comma List                                       { [$1] ++ $3 }
 List          : Variable comma List                                       { [$1] ++ $3 }
               | Variable                                                  { [$1] }
                   
-Btype         : symbol                                                    { Btype (name $1) }
-Xtype         : Btype pipe XtypeHelper                                    { Xtype $1 $3 }
-              | Btype                                                     { Xtype $1 []}
+Btype         : symbol                                                    { Btype (name $1) (tokPosition $1) }
+Xtype         : Btype pipe XtypeHelper                                    { Xtype $1 $3 (bbypePosition $1) }
+              | Btype                                                     { Xtype $1 [] (bbypePosition $1) }
 XtypeHelper   : symbol pipe XtypeHelper                                   { [(name $1)] ++ $3 }
               | symbol                                                    { [(name $1)] }
-Ttype1        : Xtype comma Ttype1                                        { let Ttype l = $3 in Ttype $ [$1] ++ l }
-              | Xtype comma Xtype                                         { Ttype $ [$1] ++ [$3] }
+Ttype1        : Xtype comma Ttype1                                        { Ttype ([$1] ++ types($3)) (xtypePosition $1) }
+              | Xtype comma Xtype                                         { Ttype ([$1] ++ [$3]) (xtypePosition $1) }
 Ttype         : lparen Ttype1 rparen                                      { $2 }
-Ptype         : Ttype                                                     { Ttype' $1 }
-              | Xtype                                                     { Xtype' $1 }
-Ftype         : Ptype arrow Ptype                                         { Ftype $1 $3 }
-Type          : Ptype                                                     { Ptype' $1 }
-              | Ftype                                                     { Ftype' $1 }
+Ptype         : Ttype                                                     { Ttype' $1 (ttypePosition $1) }
+              | Xtype                                                     { Xtype' $1 (xtypePosition $1) }
+Ftype         : Ptype arrow Ptype                                         { Ftype $1 $3 (ptypePosition $1) }
+Type          : Ptype                                                     { Ptype' $1 (ptypePosition $1) }
+              | Ftype                                                     { Ftype' $1 (ftypePosition $1) }
                   
-Signature     : functionDef Type                                          { Signature (name $1) $2}
-Equation      : symbol OptionalList assign WeakStmt                       { Equation (name $1) $2 $4 }
+Signature     : functionDef Type                                          { Signature (name $1) $2 (tokPosition $1) }
+Equation      : symbol OptionalList assign WeakStmt                       { Equation (name $1) $2 $4 (tokPosition $1) }
 Equations     : Equation Equations                                        { [$1] ++ $2 }
               | Equation                                                  { [$1] }
                 
-Stmt          : Signature Equations                                       { Valdef $1 $2}
-              | type symbol assign Type                                   { Typedef (name $2) $4 }
-              | type symbol assign FunctionApp of Type                    { TypedefFunc (name $2) $4 $6 }
-              | comment                                                   { SComment (comment $1) }
+Stmt          : Signature Equations                                       { Valdef $1 $2 (sigPosition $1)}
+              | type symbol assign Type                                   { Typedef (name $2) $4 (tokPosition $1) }
+              | type symbol assign FunctionApp of Type                    { TypedefFunc (name $2) $4 $6 (tokPosition $1) }
+              | comment                                                   { SComment (comment $1) (tokPosition $1) }
                 
                 
-WeakStmt      : if Expr then WeakStmt else WeakStmt                       { Conditional $2 $4 $6 }
-              | let symbol assign Expr in WeakStmt                        { Let (name $2) $4 $6 }
-              | while Expr do Expr                                        { While $2 $4 }
-              | Expr                                                      { SExpr $1 }
+WeakStmt      : if Expr then WeakStmt else WeakStmt                       { Conditional $2 $4 $6 (tokPosition $1) }
+              | let symbol assign Expr in WeakStmt                        { Let (name $2) $4 $6 (tokPosition $1) }
+              | while Expr do Expr                                        { While $2 $4 (tokPosition $1) }
+              | Expr                                                      { SExpr $1 (exprPosition $1) }
                               
 Expr          : Variable                                                  { $1 }
-              | lparen Expr rparen                                        { Paren $2 }
-              | Expr plus Expr                                            { Infix $1 Plus $3 }
-              | Expr minus Expr                                           { Infix $1 Minus $3 }
-              | Expr times Expr                                           { Infix $1 Times $3 }
-              | Expr div Expr                                             { Infix $1 Div $3 }
-              | Expr eq Expr                                              { Infix $1 EqualTo $3 }
-              | Expr gt Expr                                              { Infix $1 GreaterThan $3 }
-              | Expr lt Expr                                              { Infix $1 LessThan $3 }
-              | Expr lte Expr                                             { Infix $1 LessThanEqual $3 }
-              | Expr gte Expr                                             { Infix $1 GreaterThanEqual $3 }
+              | lparen Expr rparen                                        { Paren $2 (tokPosition $1) }
+              | Expr plus Expr                                            { Infix $1 (Plus $ tokPosition $2) $3 (exprPosition $1) }
+              | Expr minus Expr                                           { Infix $1 (Minus $ tokPosition $2) $3 (exprPosition $1) }
+              | Expr times Expr                                           { Infix $1 (Times $ tokPosition $2) $3 (exprPosition $1) }
+              | Expr div Expr                                             { Infix $1 (Div $ tokPosition $2) $3 (exprPosition $1) }
+              | Expr eq Expr                                              { Infix $1 (EqualTo $ tokPosition $2) $3 (exprPosition $1) }
+              | Expr gt Expr                                              { Infix $1 (GreaterThan $ tokPosition $2) $3 (exprPosition $1) }
+              | Expr lt Expr                                              { Infix $1 (LessThan $ tokPosition $2) $3 (exprPosition $1) }
+              | Expr lte Expr                                             { Infix $1 (LessThanEqual $ tokPosition $2) $3 (exprPosition $1) }
+              | Expr gte Expr                                             { Infix $1 (GreaterThanEqual $ tokPosition $2) $3 (exprPosition $1) }
                               
-Variable      : int                                                       { EInt (int $1) }
-              | symbol                                                    { ESymbol (name $1) }
+Variable      : int                                                       { EInt (int $1) (tokPosition $1)}
+              | symbol                                                    { ESymbol (name $1) (tokPosition $1)}
               | FunctionApp                                               { $1 }
-              | lparen TupleList rparen                                   { Tuple $2 }
+              | lparen TupleList rparen                                   { Tuple $2 (tokPosition $1)}
                               
-FunctionApp   : symbol OptionalArgs                                       { FunctionApp (name $1) $2 }
+FunctionApp   : symbol OptionalArgs                                       { FunctionApp (name $1) $2 (tokPosition $1) }
 
 {
 

@@ -104,38 +104,38 @@ prettyToken ( TokenError _ _ )       = "Lexical Error"
 prettyToken ( TokenWhite _ _ )       = "Whitespace"
 
 -- The token type:
-data Token    = TokenComment      { position :: AlexPosn, comment :: String }
-              | TokenType         { position :: AlexPosn }
-              | TokenIf           { position :: AlexPosn }
-              | TokenThen         { position :: AlexPosn }
-              | TokenElse         { position :: AlexPosn }
-              | TokenWhile        { position :: AlexPosn }
-              | TokenDo           { position :: AlexPosn }
-              | TokenOf           { position :: AlexPosn }
-              | TokenLet          { position :: AlexPosn }
-              | TokenIn           { position :: AlexPosn }
-              | TokenAssign       { position :: AlexPosn }
-              | TokenPlus         { position :: AlexPosn }
-              | TokenMinus        { position :: AlexPosn }
-              | TokenTimes        { position :: AlexPosn }
-              | TokenDiv          { position :: AlexPosn }
-              | TokenLParen       { position :: AlexPosn }
-              | TokenRParen       { position :: AlexPosn }
-              | TokenPipe         { position :: AlexPosn }
-              | TokenArrow        { position :: AlexPosn }
-              | TokenComa         { position :: AlexPosn }
-              | TokenEQ           { position :: AlexPosn }
-              | TokenGT           { position :: AlexPosn }
-              | TokenLT           { position :: AlexPosn }
-              | TokenLTE          { position :: AlexPosn }
-              | TokenGTE          { position :: AlexPosn }
-              | TokenSym          { position :: AlexPosn, name :: String }
-              | TokenFunctionDef  { position :: AlexPosn, name :: String }
-              | TokenInt          { position :: AlexPosn, int :: Int }
-              | TokenBool         { position :: AlexPosn, bool :: Bool }
+data Token    = TokenComment      { tokPosition :: AlexPosn, comment :: String }
+              | TokenType         { tokPosition :: AlexPosn }
+              | TokenIf           { tokPosition :: AlexPosn }
+              | TokenThen         { tokPosition :: AlexPosn }
+              | TokenElse         { tokPosition :: AlexPosn }
+              | TokenWhile        { tokPosition :: AlexPosn }
+              | TokenDo           { tokPosition :: AlexPosn }
+              | TokenOf           { tokPosition :: AlexPosn }
+              | TokenLet          { tokPosition :: AlexPosn }
+              | TokenIn           { tokPosition :: AlexPosn }
+              | TokenAssign       { tokPosition :: AlexPosn }
+              | TokenPlus         { tokPosition :: AlexPosn }
+              | TokenMinus        { tokPosition :: AlexPosn }
+              | TokenTimes        { tokPosition :: AlexPosn }
+              | TokenDiv          { tokPosition :: AlexPosn }
+              | TokenLParen       { tokPosition :: AlexPosn }
+              | TokenRParen       { tokPosition :: AlexPosn }
+              | TokenPipe         { tokPosition :: AlexPosn }
+              | TokenArrow        { tokPosition :: AlexPosn }
+              | TokenComa         { tokPosition :: AlexPosn }
+              | TokenEQ           { tokPosition :: AlexPosn }
+              | TokenGT           { tokPosition :: AlexPosn }
+              | TokenLT           { tokPosition :: AlexPosn }
+              | TokenLTE          { tokPosition :: AlexPosn }
+              | TokenGTE          { tokPosition :: AlexPosn }
+              | TokenSym          { tokPosition :: AlexPosn, name :: String }
+              | TokenFunctionDef  { tokPosition :: AlexPosn, name :: String }
+              | TokenInt          { tokPosition :: AlexPosn, int :: Int }
+              | TokenBool         { tokPosition :: AlexPosn, bool :: Bool }
               | TokenEOF 
-              | TokenError        { position :: AlexPosn, text :: String }
-              | TokenWhite        { position :: AlexPosn, text :: String }
+              | TokenError        { tokPosition :: AlexPosn, text :: String }
+              | TokenWhite        { tokPosition :: AlexPosn, text :: String }
               deriving (Eq,Show)
 
 mkL :: LexClass -> AlexInput -> Int -> Alex Token

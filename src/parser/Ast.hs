@@ -1,57 +1,126 @@
+{-# LANGUAGE DuplicateRecordFields #-}
 module Ast where
 
-data Signature = Signature String Type
-               deriving Show
-data Equation = Equation String Expr Stmt
-              deriving Show
+import Lexer
 
-data Binop = Plus
-           | Minus
-           | Times
-           | Div
-           | EqualTo
-           | LessThan
-           | GreaterThan
-           | LessThanEqual
-           | GreaterThanEqual
-           deriving Show
+data Signature      = Signature         {   functionName    :: String
+                                        ,   functionType    :: Type
+                                        ,   sigPosition     :: AlexPosn
+                                        }   
+                    deriving Show
 
-data Stmt = Conditional Expr Stmt Stmt
-          | Let String Expr Stmt
-          | While Expr Expr
-          | Valdef Signature [Equation]
-          | Typedef String Type
-          | TypedefFunc String Expr Type -- Used for type Board = Grid() of ...
-          | SExpr Expr
-          | SComment String
-          deriving Show
+data Equation       = Equation          {   functionName    :: String
+                                        ,   functionArgs    :: Expr
+                                        ,   functionStmt    :: Stmt
+                                        ,   equPosition     :: AlexPosn
+                                        }   
+                    deriving Show
 
-data Expr = EInt Int
-          | ESymbol String
-          | Paren Expr
-          | Tuple [Expr]
-          | FunctionApp String Expr
-          | Infix Expr Binop Expr
-          | Empty
-          deriving Show
+data Binop          = Plus              {   binopPosition   :: AlexPosn }
+                    | Minus             {   binopPosition   :: AlexPosn }
+                    | Times             {   binopPosition   :: AlexPosn }
+                    | Div               {   binopPosition   :: AlexPosn }
+                    | EqualTo           {   binopPosition   :: AlexPosn }
+                    | LessThan          {   binopPosition   :: AlexPosn }
+                    | GreaterThan       {   binopPosition   :: AlexPosn }
+                    | LessThanEqual     {   binopPosition   :: AlexPosn }
+                    | GreaterThanEqual  {   binopPosition   :: AlexPosn }
+                    deriving Show
 
-data Btype = Btype String
-           | Ttype'' Ttype 
-           deriving Show
+data Stmt           = Conditional       {   condition       :: Expr
+                                        ,   ifthen          :: Stmt
+                                        ,   elsethen        :: Stmt
+                                        ,   stmtPosition    :: AlexPosn
+                                        }
+                    | Let               {   variable        :: String 
+                                        ,   letExpr         :: Expr
+                                        ,   follows         :: Stmt
+                                        ,   stmtPosition    :: AlexPosn
+                                        }
+                    | While             {   condition       :: Expr
+                                        ,   application     :: Expr
+                                        ,   stmtPosition    :: AlexPosn
+                                        }
+                    | Valdef            {   sig             :: Signature
+                                        ,   patterns        :: [Equation]
+                                        ,   stmtPosition    :: AlexPosn
+                                        }
+                    | Typedef           {   typeName        :: String
+                                        ,   oldType         :: Type
+                                        ,   stmtPosition    :: AlexPosn
+                                        }
+                    | TypedefFunc       {   functionName    :: String
+                                        ,   oldFunction     :: Expr
+                                        ,   functionType    :: Type
+                                        ,   stmtPosition    :: AlexPosn
+                                        }
+                    | SExpr             {   stmtExpr        :: Expr
+                                        ,   stmtPosition    :: AlexPosn
+                                        }
+                    | SComment          {   commentText     :: String
+                                        ,   stmtPosition    :: AlexPosn
+                                        }
+                    deriving Show
 
-data Xtype = Xtype Btype [String]
-           deriving Show
+data Expr           = EInt              {   value           :: Int
+                                        ,   exprPosition    :: AlexPosn
+                                        }
+                    | ESymbol           {   symbolName      :: String
+                                        ,   exprPosition    :: AlexPosn
+                                        }
+                    | Paren             {   parenExpr       :: Expr
+                                        ,   exprPosition    :: AlexPosn
+                                        }
+                    | Tuple             {   values          :: [Expr]
+                                        ,   exprPosition    :: AlexPosn
+                                        }
+                    | FunctionApp       {   functionName    :: String
+                                        ,   functionArgs    :: Expr
+                                        ,   exprPosition    :: AlexPosn
+                                        }
+                    | Infix             {   lExpr           :: Expr
+                                        ,   operation       :: Binop
+                                        ,   rExpr           :: Expr
+                                        ,   exprPosition    :: AlexPosn
+                                        }
+                    | Empty
+                    deriving Show
 
-data Ttype = Ttype [Xtype]
-            deriving Show
+data Btype          = Btype             {   typeName        :: String
+                                        ,   bbypePosition   :: AlexPosn
+                                        }   
+                    deriving Show
 
-data Ptype = Xtype' Xtype
-           | Ttype' Ttype
-           deriving Show
+data Xtype          = Xtype             {   btype           :: Btype
+                                        ,   extensions      :: [String]
+                                        ,   xtypePosition   :: AlexPosn
+                                        }   
+                    deriving Show
 
-data Ftype = Ftype Ptype Ptype
-           deriving Show
+data Ttype          = Ttype             {   types           :: [Xtype]
+                                        ,   ttypePosition   :: AlexPosn
+                                        }   
+                    deriving Show
 
-data Type = Ptype' Ptype
-          | Ftype' Ftype
-          deriving Show
+data Ptype          = Xtype'            {   xtype           :: Xtype
+                                        ,   ptypePosition   :: AlexPosn
+                                        }
+                    | Ttype'            {   ttype           :: Ttype
+                                        ,   ptypePosition   :: AlexPosn
+                                        }
+                    deriving Show
+
+data Ftype          = Ftype             {   ltype           :: Ptype
+                                        ,   rtype           :: Ptype
+                                        ,   ftypePosition   :: AlexPosn
+                                        }
+                    deriving Show
+
+data Type           = Ptype'            {   ptype           :: Ptype
+                                        ,   typePosition    :: AlexPosn
+                                        }
+                    | Ftype'            {   ftype           :: Ftype
+                                        ,   typePosition    :: AlexPosn
+                                        }
+                    deriving Show
+

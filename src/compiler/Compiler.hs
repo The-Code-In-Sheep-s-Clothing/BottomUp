@@ -55,7 +55,7 @@ compile_stmts [] = return ""
 compile_stmts (x:xs) = (++) <$> (compile_stmt "" x <++ "\n") <*> compile_stmts xs
 
 compile_stmt :: String -> Stmt -> StateRet
-compile_stmt f (SExpr (ESymbol e)) = do
+compile_stmt f (SExpr (ESymbol e _) _) = do
     cur_state <- get
     if elem f (map (\(a,_,_) -> a) cur_state) then
         if elem e (get_state_xtypes f cur_state) then
@@ -64,55 +64,55 @@ compile_stmt f (SExpr (ESymbol e)) = do
             return (f ++ "Con " ++ e)
     else
         return (e)
-compile_stmt f (SExpr e) = return (compile_expr e)
-compile_stmt _ (Typedef s t) = compile_typedef (Typedef s t)
-compile_stmt _ (TypedefFunc s e t ) = compile_typedef (TypedefFunc s e t)
-compile_stmt _ (Valdef s e) = compile_valdef (Valdef s e) <++ "\n"
-compile_stmt f (Let s e st) = ("let " ++ s ++ "=" ++ compile_expr e ++ " in ") ++> compile_stmt f st
-compile_stmt f (Conditional e s1 s2) = 
+compile_stmt f (SExpr e _) = return (compile_expr e)
+compile_stmt _ (Typedef s t p) = compile_typedef (Typedef s t p)
+compile_stmt _ (TypedefFunc s e t p) = compile_typedef (TypedefFunc s e t p)
+compile_stmt _ (Valdef s e p) = compile_valdef (Valdef s e p) <++ "\n"
+compile_stmt f (Let s e st _) = ("let " ++ s ++ "=" ++ compile_expr e ++ " in ") ++> compile_stmt f st
+compile_stmt f (Conditional e s1 s2 _) = 
     ("if " ++ compile_expr e ++ " then ") ++> compile_stmt f s1 <++> (" else " ++> compile_stmt f s2)
-compile_stmt _ (While (FunctionApp f1 e1) (FunctionApp f2 e2)) = return (
+compile_stmt _ (While (FunctionApp f1 e1 _) (FunctionApp f2 e2 _) _) = return (
     "while " ++ "(" ++ f1 ++ while_compose e1 ++ ")" ++ " " ++ 
     "(" ++ f2  ++ ")" ++ " " ++ compile_expr e2 )
-compile_stmt _ (SComment s) = return s
-while_compose (FunctionApp f e) = "." ++ f ++ while_compose e
+compile_stmt _ (SComment s _) = return s
+while_compose (FunctionApp f e _) = "." ++ f ++ while_compose e
 while_compose _ = ""
 
 -- Function type definition
 -- TODO accept different types of arguments for initialBoard
 compile_valdef :: Stmt -> StateRet
-compile_valdef (Valdef (Signature "initialBoard" t) ((Equation s e st):es)) =
+compile_valdef (Valdef (Signature "initialBoard" t _) ((Equation s e st _):es) _) =
     (((s ++ " :: Grid -> ") ++> compile_type t ) <++ ("\n" ++
     "initialBoard (Array (x,y)) = board (x, y)")) <++> (compile_stmt "" st)
-compile_valdef (Valdef (Signature s t) e) = 
+compile_valdef (Valdef (Signature s t _) e _) = 
     (s ++ " :: ") ++> compile_type t <++ "\n" <++> (intercalateM "\n" (map (compile_equation (get_return_type t)) e))
 
 -- Function defintion equations
 compile_equation :: String -> Equation -> StateRet
-compile_equation f (Equation s e st) = (s ++ " " ++ compile_expr e ++ "=") ++> compile_stmt f st
+compile_equation f (Equation s e st _) = (s ++ " " ++ compile_expr e ++ "=") ++> compile_stmt f st
 
 -- Type/data declarations (bo/equationard, input)
 compile_typedef :: Stmt -> StateRet
-compile_typedef (TypedefFunc "Board" e t) = 
+compile_typedef (TypedefFunc "Board" e t _) = 
     add_content_to_state t <++ 
     ("board_size = " ++ compile_expr e)
-compile_typedef (Typedef "Input" t) = "type Input = " ++> compile_type t
-compile_typedef (Typedef s t) = ("type " ++ s ++ " = ") ++> compile_type t
+compile_typedef (Typedef "Input" t _) = "type Input = " ++> compile_type t
+compile_typedef (Typedef s t _) = ("type " ++ s ++ " = ") ++> compile_type t
 
 compile_type :: Type -> StateRet
-compile_type (Ptype' p) = compile_ptype p
-compile_type (Ftype' f) = compile_ftype f
+compile_type (Ptype' p _) = compile_ptype p
+compile_type (Ftype' f _) = compile_ftype f
 
 compile_ptype :: Ptype -> StateRet
-compile_ptype (Xtype' x) = compile_xtype x
-compile_ptype (Ttype' t) = compile_ttype t
+compile_ptype (Xtype' x _) = compile_xtype x
+compile_ptype (Ttype' t _) = compile_ttype t
 
 compile_ftype :: Ftype -> StateRet
-compile_ftype (Ftype p1 p2) = compile_ptype p1 <++ " -> " <++> compile_ptype p2
+compile_ftype (Ftype p1 p2 _) = compile_ptype p1 <++ " -> " <++> compile_ptype p2
 
 compile_xtype :: Xtype -> StateRet
-compile_xtype (Xtype b []) = return (compile_btype b)
-compile_xtype (Xtype b l) = do
+compile_xtype (Xtype b [] _) = return (compile_btype b)
+compile_xtype (Xtype b l _) = do
     cur_state <- get
     let type_list = [compile_btype b] ++ l
     let t = intercalate "_" type_list
@@ -123,7 +123,7 @@ compile_xtype (Xtype b l) = do
         return t
 
 add_content_to_state :: Type -> StateRet
-add_content_to_state (Ptype' (Xtype' (Xtype b l))) = do
+add_content_to_state (Ptype' (Xtype' (Xtype b l _) _) _) = do
     cur_state <- get
     let type_list = [compile_btype b] ++ l
     let t = "Content"
@@ -136,30 +136,30 @@ add_content_to_state (Ptype' (Xtype' (Xtype b l))) = do
 add_content_to_state _ = return "Not Possible"
 
 compile_ttype :: Ttype -> StateRet
-compile_ttype (Ttype x) = "(" ++> (intercalateM "," (map compile_xtype x)) <++ ")"
+compile_ttype (Ttype x _) = "(" ++> (intercalateM "," (map compile_xtype x)) <++ ")"
 
 compile_btype :: Btype -> String
 -- compile_btype (Btype "Board") = "Board Content"
-compile_btype (Btype b) = b
+compile_btype (Btype b _) = b
 
 compile_expr :: Expr -> String
-compile_expr (EInt i) = show i
-compile_expr (ESymbol s) 
+compile_expr (EInt i _) = show i
+compile_expr (ESymbol s _) 
     | s == "initialBoard" = "initialBoard board_size" 
     | otherwise = s
-compile_expr (Paren e) = "(" ++ compile_expr e ++ ")"
-compile_expr (Tuple t) = "(" ++ intercalate "," (map compile_expr t) ++ ")"
+compile_expr (Paren e _) = "(" ++ compile_expr e ++ ")"
+compile_expr (Tuple t _) = "(" ++ intercalate "," (map compile_expr t) ++ ")"
 -- Need to check if it's a built in function with a different signature (or,and,...)
-compile_expr (FunctionApp s t@(Tuple e)) 
+compile_expr (FunctionApp s t@(Tuple e _) _) 
     | s == "or" || s == "and" = "(" ++ s ++ " [" ++ 
     intercalate "," (map compile_expr e) ++ "])"
     | otherwise = "(" ++ s ++ " " ++ compile_expr t ++ ")"
-compile_expr (FunctionApp s e)
+compile_expr (FunctionApp s e _)
     | s == "or" || s == "and" = "(" ++ s ++ " [" ++ 
     compile_expr e ++ "])"
     | s == "input" = "(" ++ s ++ " " ++ compile_expr e ++ " [])"
     | otherwise = "(" ++ s ++ " " ++ compile_expr e ++ ")"
-compile_expr (Infix e1 b e2) = compile_expr e1 ++ compile_binop b ++ compile_expr e2
+compile_expr (Infix e1 b e2 _) = compile_expr e1 ++ compile_binop b ++ compile_expr e2
 compile_expr (Empty) = ""
 loop_expr_func (e:es) =
     if null es then
@@ -168,19 +168,19 @@ loop_expr_func (e:es) =
         "(" ++ compile_expr e ++ ") " ++ loop_expr_func es
 
 compile_binop :: Binop -> String
-compile_binop Plus = "+"
-compile_binop Minus = "-"
-compile_binop Times = "*"
-compile_binop Div = "/"
-compile_binop EqualTo = "=="
-compile_binop LessThan = "<"
-compile_binop GreaterThan = ">"
-compile_binop LessThanEqual = "<="
-compile_binop GreaterThanEqual = ">="
+compile_binop (Plus _ ) = "+"
+compile_binop (Minus _ ) = "-"
+compile_binop (Times _ ) = "*"
+compile_binop (Div _ ) = "/"
+compile_binop (EqualTo _ ) = "=="
+compile_binop (LessThan _ ) = "<"
+compile_binop (GreaterThan _ ) = ">"
+compile_binop (LessThanEqual _ ) = "<="
+compile_binop (GreaterThanEqual _ ) = ">="
 
 get_return_type :: Type -> String
-get_return_type (Ptype' p) = evalState (compile_ptype p) []
-get_return_type (Ftype' (Ftype _ p2)) = evalState (compile_ptype p2) []
+get_return_type (Ptype' p _) = evalState (compile_ptype p) []
+get_return_type (Ftype' (Ftype _ p2 _) _) = evalState (compile_ptype p2) []
 
 get_state_xtypes :: String -> Env -> [String]
 get_state_xtypes s [] = []

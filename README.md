@@ -7,4 +7,8 @@
 
 ## Build
 
-* run 'make' from inside src directory
+* cabal install
+* cabal configure
+* cabal build
+
+Build is also avaliable for .vscode

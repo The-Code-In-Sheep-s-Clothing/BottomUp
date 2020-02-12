@@ -78,13 +78,20 @@ builtin_funcs = [
     \   putStrLn $ printBoard b\n\
     \   x <- getInt\n\
     \   y <- getInt\n\
-    \   return (x, y)",
+    \   if (x <= (numRows (bounds b)) && y <= (numCols (bounds b))) then return (x, y) else (getInts b)",
 
     "getInt :: IO Int\n\
     \getInt = do\n\
     \   hFlush stdout\n\
     \   i <- getLine\n\
     \   return $ read i",
+
+    "numRows :: ((Int, Int), (Int, Int)) -> Int\n\
+    \numRows ((a, b), (c, d)) = c",
+
+    
+    "numCols :: ((Int, Int), (Int, Int)) -> Int\n\
+    \numCols ((a, b), (c, d)) = d",
 
     "input :: Board -> [Int] -> Position\n\
     \input b l = unsafePerformIO $ getInts b",

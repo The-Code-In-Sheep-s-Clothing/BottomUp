@@ -108,14 +108,18 @@ builtin_funcs = [
     \                                       else \"\"",
 
     "maxLength :: Board -> ((Int, Int), (Int, Int)) -> Int\n\
-    \maxLength board ((a, b), (c, d)) = max (length (show (board!(a,b)))) (if (a < c || b < d) then\n\
+    \maxLength board ((a, b), (c, d)) = max (length (showCell (board!(a,b)))) (if (a < c || b < d) then\n\
     \                                                       if(b < d) then\n\
     \                                                       maxLength board ((a, b+1), (c, d))\n\
     \                                                       else maxLength board ((a+1, 1), (c, d))\n\
     \                                                       else 0)",
 
-    "spaceString :: Show c => c -> Int -> String\n\
-    \spaceString c l = show c ++ extraSpaces (length (show c)) (l+1)",
+    "spaceString :: Content -> Int -> String\n\
+    \spaceString c l = showCell c ++ extraSpaces (length (showCell c)) (l+1)",
+
+    "showCell :: Content -> String\n\
+    \showCell (ContentCon c) = show c\n\
+    \showCell c = show c",
 
     "extraSpaces :: Int -> Int -> String\n\
     \extraSpaces m l = if (m == l) then \"\" else \" \" ++ extraSpaces (m+1) l",

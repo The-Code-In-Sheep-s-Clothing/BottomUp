@@ -4,7 +4,7 @@ import Data.List.Split
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Monad.State
-import qualified Data.Text as T
+import Data.Strings
 import Ast
 import Builtins
 
@@ -96,8 +96,21 @@ compile_typedef :: Stmt -> StateRet
 compile_typedef (TypedefFunc "Board" e t _) = 
     add_content_to_state t <++ 
     ("board_size = " ++ compile_expr e)
-compile_typedef (Typedef "Input" t _) = "type Input = " ++> compile_type t
+compile_typedef (Typedef "Input" t _) = "type Input = " ++> compile_type t <++ 
+    ("\n\n-- Input functions\n" ++ compile_input_funcs t ++ "\n")
 compile_typedef (Typedef s t _) = ("type " ++ s ++ " = ") ++> compile_type t
+
+-- Compiles in the input functions, replacing the types with the correct tuple
+compile_input_funcs :: Type -> String
+compile_input_funcs t = let x = (intercalate "," (["Int" | x <- [1..count_tuple_type t]])) in
+    strReplace "{input_type}" x (input_funcs!!0) ++ "\n\n" ++ 
+    let y = (intercalate "," (["unsafePerformIO getInt" | x <- [1..count_tuple_type t]])) in
+        strReplace "{getInts}" y (strReplace "{input_type}" x (input_funcs!!1))
+
+count_tuple_type :: Type -> Int
+count_tuple_type (Ptype' (Xtype' (Xtype (Btype "Position" _) [] _) _) _) = 2
+count_tuple_type (Ptype' (Xtype' (Xtype b [] _) _) _) = 1
+count_tuple_type (Ptype' (Ttype' (Ttype t _) _) _) = length t
 
 compile_type :: Type -> StateRet
 compile_type (Ptype' p _) = compile_ptype p
@@ -157,7 +170,7 @@ compile_expr (FunctionApp s t@(Tuple e _) _)
 compile_expr (FunctionApp s e _)
     | s == "or" || s == "and" = "(" ++ s ++ " [" ++ 
     compile_expr e ++ "])"
-    | s == "input" = "(" ++ s ++ " " ++ compile_expr e ++ " [])"
+    | s == "input" = "(" ++ s ++ " " ++ compile_expr e ++ " )"
     | otherwise = "(" ++ s ++ " " ++ compile_expr e ++ ")"
 compile_expr (Infix e1 b e2 _) = compile_expr e1 ++ compile_binop b ++ compile_expr e2
 compile_expr (Empty) = ""

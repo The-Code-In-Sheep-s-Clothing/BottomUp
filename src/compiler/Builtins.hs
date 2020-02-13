@@ -15,6 +15,15 @@ builtin_types = [
     "type Row = [Content]",
     "type BoardProperty = Board -> Bool"]
 
+input_funcs = [
+    "input :: Board -> ({input_type})\n\
+    \input b = unsafePerformIO $ getInts b",
+
+    "getInts :: Board -> IO ({input_type})\n\
+    \getInts b = do\n\
+    \   putStrLn $ printBoard b\n\
+    \   return ({getInts})"]
+
 builtin_funcs = [
     "board :: (Int,Int) -> Content -> Board\n\
     \board size c = listArray ((1,1),size) (Prelude.repeat c)",
@@ -73,13 +82,6 @@ builtin_funcs = [
     "while :: (t -> Bool) -> (t -> t) -> t -> t\n\
     \while cond exe v = if (cond) v then while cond exe (exe v) else v",
 
-    "getInts :: Board -> IO (Int, Int)\n\
-    \getInts b = do\n\
-    \   putStrLn $ printBoard b\n\
-    \   x <- getInt\n\
-    \   y <- getInt\n\
-    \   if (x <= (numRows (bounds b)) && y <= (numCols (bounds b))) then return (x, y) else (getInts b)",
-
     "getInt :: IO Int\n\
     \getInt = do\n\
     \   hFlush stdout\n\
@@ -89,12 +91,8 @@ builtin_funcs = [
     "numRows :: ((Int, Int), (Int, Int)) -> Int\n\
     \numRows ((a, b), (c, d)) = c",
 
-    
     "numCols :: ((Int, Int), (Int, Int)) -> Int\n\
     \numCols ((a, b), (c, d)) = d",
-
-    "input :: Board -> [Int] -> Position\n\
-    \input b l = unsafePerformIO $ getInts b",
 
     "byRows :: [[Content]] -> Board\n\
     \byRows rows = listArray ((1,1),size) (concat (reverse rows))\n\

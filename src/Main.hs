@@ -2,6 +2,7 @@ module Main where
 import Parser
 import Lexer
 import Compiler
+import TypeChecker
 import Ast
 -- import TypeChecker
 
@@ -33,7 +34,9 @@ main = do
         Left s -> print s
         Right ast -> do
             print ast
-            writeFile "output.hs" (compile ast)
+            let (valid, error) = check_start ast 
+            putStr error
+            --writeFile "output.hs" (compile ast)
     
     -- let (valid, error) = check_start(ast)
     -- putStrLn error

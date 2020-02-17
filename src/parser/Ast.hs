@@ -55,10 +55,3 @@ data Type = Ptype' Ptype
           | Ftype' Ftype
           deriving Show
 
-data NewType = Sgl BaseType
-             | Dbl [BaseType]
-             | Tpl [[BaseType]] [BaseType]
-             | Em 
-data BaseType  = Base String 
-               | Sls String
-               | Ifblk

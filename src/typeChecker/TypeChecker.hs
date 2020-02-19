@@ -1,7 +1,6 @@
 module TypeChecker where
 import Ast
 import Data.List
-import Debug.Trace
 
 data State       = State [Def] [Def]
                  deriving Show
@@ -217,7 +216,7 @@ check_start [] = (True, "")
 check_start x = let (state1, valid1, error1) = check_dup_name x (State [] [])
                         in if(valid1) 
                            then let (State fs ts, valid2, error2) = check_valid_def_types state1
-                               in if(trace ("\n " ++ (show fs)) valid2)
+                               in if(valid2)
                                         then let (valid3, error3) = check x (State fs ts)
                                                 in (valid3, error3 ++ "\n")
                                         else (False, error2 ++ "\n")
@@ -310,12 +309,12 @@ check_function_app s1 e (State fs ts) = let d = lookup5 fs s1
 
 
 check_expr :: Expr -> State -> (NewType, Bool, String)
-check_expr (EInt _) st                          = (Sgl (Base "Int"), True, "")
-check_expr (Paren e) st                         = check_expr e st
-check_expr (Tuple t) st                         = check_tuple t st
-check_expr (Infix e1 b e2) st                   = check_binop e1 b e1 st
-check_expr (FunctionApp s e) (State fs ts)      = check_function_app s e (State fs ts)
-check_expr (ESymbol s) (State fs ts)            = check_symbol s fs
+check_expr (EInt _ _) st                          = (Sgl (Base "Int"), True, "")
+check_expr (Paren e _) st                         = check_expr e st
+check_expr (Tuple t _) st                         = check_tuple t st
+check_expr (Infix e1 b e2 _) st                   = check_binop e1 b e1 st
+check_expr (FunctionApp s e _) (State fs ts)      = check_function_app s e (State fs ts)
+check_expr (ESymbol s _) (State fs ts)            = check_symbol s fs
 check_expr (Empty) st                           = (Sgl Em, True, "")
 
 bs_to_str :: BaseType -> String
@@ -360,7 +359,7 @@ eparse [Sgl Em] = False
 eparse _  = True
 
 check_stmt :: Stmt -> State -> (NewType, Bool, String)
-check_stmt (Conditional e stmt1 stmt2) st = let (type1, valid1, error1) = (check_expr e st)
+check_stmt (Conditional e stmt1 stmt2 _) st = let (type1, valid1, error1) = (check_expr e st)
                                                 (type2, valid2, error2) = check_stmt stmt1 st
                                                 (type3, valid3, error3) = check_stmt stmt2 st
                                                 in if(type_comp type1 (Sgl (Base "Bool")) st)
@@ -370,28 +369,28 @@ check_stmt (Conditional e stmt1 stmt2) st = let (type1, valid1, error1) = (check
                                                                         else (head type4, valid1 && valid2 && valid3, error1 ++ error2 ++ error3)
                                                                         
                                                         else (Sgl Em, False, "\nExpression " ++ (show e) ++ " is not of type Bool" ++ error1 ++ error2 ++ error3)
-check_stmt (Let s e stmt) (State fs ts)           = let (type1, valid1, error1) = check_expr e (State fs ts)
+check_stmt (Let s e stmt _) (State fs ts)           = let (type1, valid1, error1) = check_expr e (State fs ts)
                                                         in if(eparse [type1])
                                                                 then check_stmt stmt (State ([(Fdef s (Sgl Em) type1)] ++ fs) ts )
                                                                 else (Sgl Em, valid1, error1)
-check_stmt (While e1 e2) st          = let (type1, valid1, error1) = check_expr e1 st
+check_stmt (While e1 e2 _) st          = let (type1, valid1, error1) = check_expr e1 st
                                            (type2, valid2, error2) = check_expr e2 st
                                         in if(type_comp type1 (Sgl (Base "Bool")) st)
                                             then (type2, valid1 && valid2, error1 ++ error2)
                                             else (Sgl Em, False, "\nExpression " ++ (show e1) ++ " is not of type Bool" ++ error1 ++ error2)
-check_stmt (Valdef (Signature s t) e) (State fs ts)          = let d = lookup5 fs s
+check_stmt (Valdef (Signature s t _) e _) (State fs ts)          = let d = lookup5 fs s
                                                                    in if(null d)
                                                                            then (Sgl Em, False, "\nhmm " ++ s)
                                                                            else check_func_call e (head d) (State fs ts)
-check_stmt (Typedef s t) st           = (Sgl Em, True, "")
-check_stmt (TypedefFunc s e t) st      = (Sgl Em, True, "")
-check_stmt (SExpr e) st               = check_expr e st
+check_stmt (Typedef s t _) st           = (Sgl Em, True, "")
+check_stmt (TypedefFunc s e t _) st      = (Sgl Em, True, "")
+check_stmt (SExpr e _) st               = check_expr e st
 
 tpl_arg_def :: String -> [Expr] -> [[BaseType]] -> State -> (State, Bool, String)
-tpl_arg_def s1 [(ESymbol s2)] [t] (State fs ts) = if(exists_in (fs ++ ts) s2)
+tpl_arg_def s1 [(ESymbol s2 _)] [t] (State fs ts) = if(exists_in (fs ++ ts) s2)
                                                         then (State fs ts, False, "\n variable name " ++ s2 ++ " is not valid in def of function " ++ s1)
                                                         else (State ([Fdef s2 (Sgl Em) (if((length t) == 1) then (Sgl (head t)) else (Dbl t))] ++ fs) ts, True, "")
-tpl_arg_def s1 ((ESymbol s2):xs) (t:t2) (State fs ts) = let ((State fs1 ts1), valid1, error1) = tpl_arg_def s1 xs t2 (State fs ts)
+tpl_arg_def s1 ((ESymbol s2 _):xs) (t:t2) (State fs ts) = let ((State fs1 ts1), valid1, error1) = tpl_arg_def s1 xs t2 (State fs ts)
                                                                 in if(exists_in (fs1 ++ ts1) s2)
                                                                         then (State fs1 ts1, False, "\n variable name " ++ s2 ++ " is not valid in def of function " ++ s1)
                                                                         else (State ([Fdef s2 (Sgl Em) (if((length t) == 1) then (Sgl (head t)) else (Dbl t))] ++ fs1) ts1, True, "") 
@@ -402,10 +401,10 @@ check_args :: Expr -> Def -> State -> (State, Bool, String)
 check_args Empty (Fdef s (Sgl Em) t) st = (st, True, "")
 check_args Empty (Fdef s _ _) st = (st, False, "\nNo arguments in left side of equation in def of function " ++ s)
 check_args _ (Fdef s (Sgl Em) t) st= (st, False, "\nArguments given in left side of equation in def of function " ++ s ++ " that takes no arguments")
-check_args (ESymbol s2) (Fdef s1 t1 t2) (State fs ts) = if(exists_in (fs ++ ts) s2)
+check_args (ESymbol s2 _) (Fdef s1 t1 t2) (State fs ts) = if(exists_in (fs ++ ts) s2)
                                                                 then (State fs ts, False, "\n variable name " ++ s2 ++ " is not valid in def of function " ++ s1)
                                                                 else (State ([Fdef s2 (Sgl Em) t1] ++ fs) ts, True, "")
-check_args (Tuple e) (Fdef s1 (Sgl (Base s2)) t1) (State fs ts) =  (State fs ts, False, "\np2 " ++ s1) --let (Tdef _ t2) = head (lookup5 (fs ++ ts)  s2)
+check_args (Tuple e _) (Fdef s1 (Sgl (Base s2)) t1) (State fs ts) =  (State fs ts, False, "\np2 " ++ s1) --let (Tdef _ t2) = head (lookup5 (fs ++ ts)  s2)
                                                                         --        in case t2 of
                                                                           --              (Sgl (Base s3)) -> if(s3 == s2)
                                                                             --                                    then (State fs ts, False, "\nToo many argument given in left side of equation in def of function " ++ s1)
@@ -414,20 +413,20 @@ check_args (Tuple e) (Fdef s1 (Sgl (Base s2)) t1) (State fs ts) =  (State fs ts,
                                                                                   --      (Tpl tp) -> if((length e) == (length tp))
                                                                                     --                    then tpl_arg_def s1 e tp (State fs ts)
                                                                                       --                  else (State fs ts, False, "\nnumber of arguments in def of function " ++ s1 ++ " do not match")
-check_args (Tuple e) (Fdef s1 (Dbl d) t2) (State fs ts ) = (State fs ts, False, "\nnumber of arguments in def of function " ++ s1 ++ " do not match")
-check_args (Tuple e) (Fdef s1 (Tpl t1) t2) (State fs ts) =  if((length e) == (length t1))
+check_args (Tuple e _) (Fdef s1 (Dbl d) t2) (State fs ts ) = (State fs ts, False, "\nnumber of arguments in def of function " ++ s1 ++ " do not match")
+check_args (Tuple e _) (Fdef s1 (Tpl t1) t2) (State fs ts) =  if((length e) == (length t1))
                                                                 then tpl_arg_def s1 e t1 (State fs ts)
                                                                 else (State fs ts, False, "\nnumber of arguments in def of function " ++ s1 ++ " do not match")
 
 check_func_call :: [Equation] -> Def -> State -> (NewType, Bool, String)
-check_func_call [Equation s e stmt] (Fdef _ t1 t2) (State fs ts) = let (state1, valid1, error1) = check_args e (Fdef s t1 t2) (State fs ts)
+check_func_call [Equation s e stmt _] (Fdef _ t1 t2) (State fs ts) = let (state1, valid1, error1) = check_args e (Fdef s t1 t2) (State fs ts)
                                                                         in if(valid1)
                                                                                 then let (type2, valid2, error2) = check_stmt stmt state1
                                                                                         in if(type_comp type2 t2 (State fs ts))
                                                                                                 then (Sgl Em, valid2, error2)
                                                                                                 else (Sgl Em, False, "\n return type of function " ++ s ++ " does not match" ++ error2) 
                                                                                 else (Sgl Em, False, error1)
-check_func_call ((Equation s e stmt):xs) (Fdef _ t1 t2) (State fs ts) = let (state1, valid1, error1) = check_args e (Fdef s t1 t2) (State fs ts)
+check_func_call ((Equation s e stmt _):xs) (Fdef _ t1 t2) (State fs ts) = let (state1, valid1, error1) = check_args e (Fdef s t1 t2) (State fs ts)
                                                         in if(valid1)
                                                                 then let (type2, valid2, error2) = check_stmt stmt state1
                                                                          (type3, valid3, error3) = check_func_call xs (Fdef s t1 t2) (State fs ts)
@@ -575,19 +574,19 @@ check_dup_name (x:xs) st = let (state1, valid1, error1) = check_dup_name_stmt x 
                                     in (state2, valid1 && valid2, error2 ++ error1)
 
 check_equation_name :: String -> [Equation] -> Bool
-check_equation_name s1 [(Equation s2 _ _)] = s1 == s2
-check_equation_name s1 ((Equation s2 _ _):xs) = (s1 == s2) && (check_equation_name s1 xs)
+check_equation_name s1 [(Equation s2 _ _ _)] = s1 == s2
+check_equation_name s1 ((Equation s2 _ _ _):xs) = (s1 == s2) && (check_equation_name s1 xs)
 
 check_dup_name_stmt :: Stmt -> State -> (State, Bool, String) 
-check_dup_name_stmt (Typedef s t) (State fs ts)  =  if(lookup_start (fs ++ ts) s)
+check_dup_name_stmt (Typedef s t _) (State fs ts)  =  if(lookup_start (fs ++ ts) s)
                                                         then (State fs ts, False, "\nType name " ++ s ++ " already used")
                                                         else (State fs ([Tdef s (type_convert t)] ++ ts), True, "")                                                
-check_dup_name_stmt (Valdef (Signature s t) e) (State fs ts) = if(lookup_start (fs ++ ts) s)
+check_dup_name_stmt (Valdef (Signature s t _) e _) (State fs ts) = if(lookup_start (fs ++ ts) s)
                                                                 then (State fs ts, False, "\nFunction name " ++ s ++ " already used")
                                                                 else if(check_equation_name s e)
                                                                         then (State ([ftype_convert s t] ++ fs) ts, True, "")
                                                                         else (State fs ts, False, "\nFunction " ++ s ++ " has inconsistent naming" )                                                                
-check_dup_name_stmt (TypedefFunc s e t) (State fs ts)  = if(not (s == "Board"))
+check_dup_name_stmt (TypedefFunc s e t _) (State fs ts)  = if(not (s == "Board"))
                                                 then ((State fs ts), False, "\nof type not allowed for non board definitions")
                                                 else (State fs ([Tdef "@@@@" (type_convert t)] ++ ts), True, "")
 check_dup_name_stmt _ st = (st, True, "")

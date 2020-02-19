@@ -3,6 +3,7 @@ import Parser
 import Lexer
 import Compiler
 import Ast
+import TypeChecker
 import Control.Exception
 -- import TypeChecker
 
@@ -25,7 +26,11 @@ main = do
         Left err -> putStrLn err
         Right ast -> do
             print ast
-            writeFile "output.hs" (compile ast)
+            let (valid, error) = check_start ast
+                in if(valid) 
+                        then   writeFile "output.hs" (compile ast)
+                        else   putStrLn error
+            
     
     -- let (valid, error) = check_start(ast)
     -- putStrLn error

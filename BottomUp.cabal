@@ -18,7 +18,7 @@ cabal-version:       >=1.10
 
 executable BottomUp
   main-is:             Main.hs
-  other-modules:       Lexer, Parser, Ast, Compiler, Builtins
+  other-modules:       Lexer, Parser, Ast, TypeChecker, Compiler, Builtins
   other-extensions:    CPP
   build-depends:       base >=4.9, array >=0.5 && <0.6, containers >= 0.6.2.1, mtl >= 2.2.1, split >= 0.2.3.2, strings, directory >= 1.3.0.0
   hs-source-dirs:      src, src/parser, src/lexer, src/compiler, src/typeChecker

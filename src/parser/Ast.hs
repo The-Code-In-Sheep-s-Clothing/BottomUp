@@ -68,6 +68,14 @@ data Stmt           = Conditional       {   condition       :: Expr
                                         }
                     deriving Show
 
+data Tuple          = TupleList         {   elements        :: [Tuple]
+                                        ,   tuplePosition   :: AlexPosn
+                                        }
+                    | TupleValue        {   tupleValue      :: Expr
+                                        ,   tuplePosition   :: AlexPosn
+                                        }
+                    deriving Show
+
 data Expr           = EInt              {   value           :: Int
                                         ,   exprPosition    :: AlexPosn
                                         }
@@ -77,7 +85,7 @@ data Expr           = EInt              {   value           :: Int
                     | Paren             {   parenExpr       :: Expr
                                         ,   exprPosition    :: AlexPosn
                                         }
-                    | Tuple             {   values          :: [Expr]
+                    | TupleExpr         {   values          :: Tuple
                                         ,   exprPosition    :: AlexPosn
                                         }
                     | FunctionApp       {   functionName    :: String

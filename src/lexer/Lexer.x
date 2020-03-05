@@ -43,7 +43,7 @@ tokens :-
   "!"                     { mkL LexBang }
   "{"                     { mkL LexLCurly }
   "}"                     { mkL LexRCurly }
-  ":"                     { mkL LexColon}
+  ":"                     { mkL LexColon }
   "&"                     { mkL LexAmp }
   $lower $alphaNumeric*   { mkL LexSym }
   $capital $alphaNumeric* { mkL LexTypeName }

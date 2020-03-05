@@ -59,14 +59,17 @@ import Data.List
 Stmts         : Stmt Stmts                                                { [$1] ++ $2 }
               | Stmt                                                      { [$1] }
 
-OptionalArgs  : lparen TupleList rparen                                   { Tuple $2 (tokPosition $1)}
+RequiredArgs  : TupleList                                                 { TupleExpr $1 (tuplePosition $1) }
               | lparen Variable rparen                                    { $2 }
-OptionalList  : lparen TupleList rparen                                   { Tuple $2 (tokPosition $1) }
+OptionalArgs  : TupleList                                                 { TupleExpr $1 (tuplePosition $1) }
               | lparen Variable rparen                                    { $2 }
               |                                                           { Empty }
-TupleList     : Variable comma List                                       { [$1] ++ $3 }
-List          : Variable comma List                                       { [$1] ++ $3 }
-              | Variable                                                  { [$1] }
+
+TupleList     : lparen TupleElement comma TupleHelper rparen              { TupleList ([$2] ++ $4) (tokPosition $1)}
+TupleHelper   : TupleElement comma TupleHelper                            { [$1] ++ $3}
+              | TupleElement                                              { [$1] }
+TupleElement  : WeakVariable                                              { TupleValue $1 (exprPosition $1) }
+              | TupleList                                                 { $1 }
                   
 Btype         : typename                                                  { Btype (name $1) (tokPosition $1) }
 Xtype         : Btype pipe XtypeHelper                                    { Xtype $1 $3 (bbypePosition $1) }
@@ -83,8 +86,8 @@ Type          : Ptype                                                     { Ptyp
               | Ftype                                                     { Ftype' $1 (ftypePosition $1) }
                   
 Signature     : functionDef colon Type                                    { Signature (name $1) $3 (tokPosition $1) }
-Equation      : symbol OptionalList assign WeakStmt                       { Equation (name $1) $2 $4 (tokPosition $1) }
-ArrayEquation : symbol bang lparen TupleList rparen assign WeakStmt       { ArrayEquation (name $1) (Tuple $4 $ tokPosition $3) $7 (tokPosition $1) }
+Equation      : symbol OptionalArgs assign WeakStmt                       { Equation (name $1) $2 $4 (tokPosition $1) }
+ArrayEquation : symbol bang TupleList assign WeakStmt                     { ArrayEquation (name $1) (TupleExpr $3 (tuplePosition $3)) $5 (tokPosition $1) }
 ArrayEquations: ArrayEquation ArrayEquations                              { [$1] ++ $2 }
               | ArrayEquation                                             { [$1] }
 Equations     : Equation                                                  { [$1] }
@@ -92,7 +95,7 @@ Equations     : Equation                                                  { [$1]
                 
 Stmt          : Signature Equations                                       { Valdef $1 $2 (sigPosition $1)}
               | type typename assign Type                                 { Typedef (name $2) $4 (tokPosition $1) }
-              | type typename assign typename OptionalArgs of Type        { TypedefFunc (name $2) (FunctionApp (name $4) $5 (tokPosition $4)) $7 (tokPosition $1) }
+              | type typename assign typename RequiredArgs of Type        { TypedefFunc (name $2) (FunctionApp (name $4) $5 (tokPosition $4)) $7 (tokPosition $1) }
               | comment                                                   { SComment (comment $1) (tokPosition $1) }
                 
                 
@@ -114,13 +117,15 @@ Expr          : Variable                                                  { $1 }
               | Expr gte Expr                                             { Infix $1 (GreaterThanEqual $ tokPosition $2) $3 (exprPosition $1) }
               | Expr bang Expr                                            { Infix $1 (Bang $ tokPosition $2) $3 (exprPosition $1) }
                               
-Variable      : int                                                       { EInt (int $1) (tokPosition $1)}
+Variable      : WeakVariable                                              { $1 }
+              | TupleList                                                 { TupleExpr $1 (tuplePosition $1)}
+                              
+WeakVariable  : int                                                       { EInt (int $1) (tokPosition $1)}
               | symbol                                                    { ESymbol (name $1) (tokPosition $1)}
               | typename                                                  { ESymbol (name $1) (tokPosition $1)} -- this WILL change
               | FunctionApp                                               { $1 }
-              | lparen TupleList rparen                                   { Tuple $2 (tokPosition $1)}
-                              
-FunctionApp   : symbol OptionalArgs                                       { FunctionApp (name $1) $2 (tokPosition $1) }
+                          
+FunctionApp   : symbol RequiredArgs                                       { FunctionApp (name $1) $2 (tokPosition $1) }
 
 {
 
@@ -155,7 +160,11 @@ prettyParseSymbol "lte"         = ">="
 prettyParseSymbol "gte"         = "<="        
 prettyParseSymbol "symbol"      = "symbol (Type or variable name)"     
 prettyParseSymbol "functionDef" = "Function Definition"
-prettyParseSymbol "comment"     = "Comment"    
+prettyParseSymbol "comment"     = "Comment"
+prettyParseSymbol "bang"        = "!"
+prettyParseSymbol "{"           = "{"
+prettyParseSymbol "}"           = "}"
+prettyParseSymbol "&"           = "&"
 
 formatExpected   :: [String] -> String
 formatExpected e = intercalate "," $ map prettyParseSymbol e

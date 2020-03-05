@@ -37,10 +37,22 @@ compile_builtin_funcs st = "-- Builtin functions\n" ++ (intercalate "\n\n" built
 
 -- Compilation code from AST
 compile :: [Stmt] -> String
-compile x = compile_imports ++ compile_builtin_types ++
+compile x = "import OutputBuiltins\n" ++ let (res, st) = runState (compile_stmts x) [] in res
+
+compile_prelude :: [Stmt] -> String
+compile_prelude x = let (res, st) = runState (compile_stmts x) [] in res
+
+compile_builtin :: [Stmt] -> String
+compile_builtin x = "module OutputBuiltins where\n" ++ compile_imports ++ compile_builtin_types ++
     let (res, st) = runState (compile_stmts x) [] in
-        compile_state st ++ "\n" ++ "-- Generated User code\n" ++ res ++
-        compile_builtin_funcs st
+        compile_state st ++ "\n" ++
+        compile_builtin_funcs st ++ "\n\n" ++
+        find_compile_input_funcs x
+
+find_compile_input_funcs :: [Stmt] -> String
+find_compile_input_funcs [] = "" 
+find_compile_input_funcs ((Typedef "Input" t _):xs) = compile_input_funcs t
+find_compile_input_funcs (x:xs) = find_compile_input_funcs xs
 
 compile_state :: Env -> String
 compile_state e = "-- User defined types\n" ++ intercalate "\n" (map compile_single_state e) ++ "\n"
@@ -96,8 +108,7 @@ compile_typedef :: Stmt -> StateRet
 compile_typedef (TypedefFunc "Board" e t _) = 
     add_content_to_state t <++ 
     ("board_size = " ++ compile_expr e)
-compile_typedef (Typedef "Input" t _) = "type Input = " ++> compile_type t <++ 
-    ("\n\n-- Input functions\n" ++ compile_input_funcs t ++ "\n")
+compile_typedef (Typedef "Input" t _) = "type Input = " ++> compile_type t <++ "\n"
 compile_typedef (Typedef s t _) = ("type " ++ s ++ " = ") ++> compile_type t
 
 -- Compiles in the input functions, replacing the types with the correct tuple

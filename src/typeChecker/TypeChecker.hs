@@ -248,9 +248,15 @@ check_binop e1 (LessThan _) e2 st         = check_binop_help e1 e2 "LessThan" (S
 check_binop e1 (GreaterThan _) e2 st      = check_binop_help e1 e2 "GreaterThan" (Sgl (Base "Bool")) st
 check_binop e1 (LessThanEqual _) e2 st    = check_binop_help e1 e2 "LessThanEqual" (Sgl (Base "Bool")) st
 check_binop e1 (GreaterThanEqual _) e2 st = check_binop_help e1 e2 "GreaterThanEqual" (Sgl (Base "Bool")) st
+check_binop e1 (Bang _) e2 (State fs ts)  = let (type1, valid1, error1) = check_expr e1 (State fs ts)                                    
+                                                (type2, valid2, error2) = check_expr e2 (State fs ts)
+                                                in if((type_comp type1 (Sgl (Base "Board")) (State fs ts)) && (type_comp type2 (Sgl (Base "Position")) (State fs ts)))
+                                                        then let (Tdef _ t) = (head (lookup5 ts "@@@@"))
+                                                                 in (t, valid1 && valid2, error1 ++ error2)
+                                                        else (Sgl Em, False, "\n" ++ (show type1) ++ " " ++ (show type2) ++ " are invalid args for function !" ++ error1 ++ error2)  
 check_binop e1 (EqualTo _) e2 st          = let (type1, valid1, error1) = check_expr e1 st                                    
                                                 (type2, valid2, error2) = check_expr e2 st
-                                            in if((type_comp type1 type2 st) && (type_comp type2 type2 st))
+                                            in if((type_comp type1 type2 st) || (type_comp type2 type2 st))
                                                 then (Sgl (Base "Bool"), valid1 && valid2, error1 ++ error2)
                                                 else (Sgl Em, False, "\n" ++ (show type1) ++ " " ++ (show type2) ++ " are invalid args for function ==" ++ error1 ++ error2)                            
 
@@ -314,7 +320,7 @@ check_expr :: Expr -> State -> (NewType, Bool, String)
 check_expr (EInt _ _) st                          = (Sgl (Base "Int"), True, "")
 check_expr (Paren e _) st                         = check_expr e st
 check_expr (Tuple t _) st                         = check_tuple t st
-check_expr (Infix e1 b e2 _) st                   = check_binop e1 b e1 st
+check_expr (Infix e1 b e2 _) st                   = check_binop e1 b e2 st
 check_expr (FunctionApp s e _) (State fs ts)      = check_function_app s e (State fs ts)
 check_expr (ESymbol s _) (State fs ts)            = check_symbol s fs
 check_expr (Empty) st                           = (Sgl Em, True, "")
@@ -360,8 +366,8 @@ eparse :: [NewType] -> Bool
 eparse [Sgl Em] = False
 eparse _  = True
 
-check_type_init_board :: Type -> Bool
-check_type_init_board (Ptype' (Xtype' (Xtype (Btype "Board" _) [] _) _) _) = True
+check_type_init_board :: [Equation] -> Bool
+check_type_init_board ((ArrayEquation _ _ _ _):xs) = True
 check_type_init_board _ = False
 
 check_stmt :: Stmt -> State -> (NewType, Bool, String)
@@ -384,7 +390,7 @@ check_stmt (While e1 e2 _) st          = let (type1, valid1, error1) = check_exp
                                         in if(type_comp type1 (Sgl (Base "Bool")) st)
                                             then (type2, valid1 && valid2, error1 ++ error2)
                                             else (Sgl Em, False, "\nExpression " ++ (show e1) ++ " is not of type Bool" ++ error1 ++ error2)
-check_stmt (Valdef (Signature s t _) e _) (State fs ts)          = if(check_type_init_board t) 
+check_stmt (Valdef (Signature s t _) e _) (State fs ts)          = if(check_type_init_board e) 
                                                                         then let (type1, bcheck1, valid1, error1) = check_initial_board e (head (lookup5 ts "@@@@")) (form_board (head (lookup5 ts "&&&&"))) (not((length e) == 1)) (State fs ts)
                                                                                  in (type1, valid1, error1)
                                                                         else check_func_call e (head (lookup5 fs s)) (State fs ts)
@@ -458,7 +464,7 @@ check_initial_board_tpl (Tuple [EInt v1 _, EInt v2 _] _) b = (init_board_update 
 check_initial_board_tpl _ _ = ([], False)
 
 check_initial_board :: [Equation] -> Def -> [[Bool]] -> Bool -> State -> (NewType, [[Bool]], Bool, String)
-check_initial_board [Equation s t stmt _] (Tdef _ t2) bcheck flag st = let (bcheck2, v) = check_initial_board_tpl t bcheck
+check_initial_board [ArrayEquation s t stmt _] (Tdef _ t2) bcheck flag st = let (bcheck2, v) = check_initial_board_tpl t bcheck
                                                                                   in if(v)
                                                                                         then let (type1, valid1, error1) = check_stmt stmt st 
                                                                                                  in if(type_comp type1 t2 st)
@@ -495,7 +501,6 @@ check_func_call ((Equation s e stmt _):xs) (Fdef _ t1 t2) (State fs ts) = let (s
                                                                                  else (Sgl Em, False, "\n return type of function " ++ s ++ " does not match" ++ error2 ++ error3) 
                                                                 else let (type2, valid2, error2) = check_func_call xs (Fdef s t1 t2) (State fs ts)
                                                                          in (Sgl Em, False, error1 ++ error2)
-
 
 check_valid_def_types :: State -> (State, Bool, String)
 check_valid_def_types (State fs ts) = let (state1, valid1, error1) = check_type_types ts builtin_state
@@ -634,6 +639,8 @@ check_dup_name (x:xs) st = let (state1, valid1, error1) = check_dup_name_stmt x 
 check_equation_name :: String -> [Equation] -> Bool
 check_equation_name s1 [(Equation s2 _ _ _)] = s1 == s2
 check_equation_name s1 ((Equation s2 _ _ _):xs) = (s1 == s2) && (check_equation_name s1 xs)
+check_equation_name s1 [(ArrayEquation s2 _ _ _)] = s1 == s2
+check_equation_name s1 ((ArrayEquation s2 _ _ _):xs) = (s1 == s2) && (check_equation_name s1 xs)
 
 check_dup_name_stmt :: Stmt -> State -> (State, Bool, String) 
 check_dup_name_stmt (Typedef s t _) (State fs ts)  =  if(lookup_start (fs ++ ts) s)

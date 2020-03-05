@@ -1,15 +1,8 @@
 type Board = Array(3,3) of Player|Empty
 type Input = Position
-type DonkeyKong = Bool|Empty
 
 initialBoard : Board
-<<<<<<< HEAD
-initialBoard(x, 1) = Empty
-initialBoard(x, 2) = Empty
-initialBoard(x, 3) = 3
-=======
 initialBoard ! (x, y) = Empty
->>>>>>> e8e527ee10121b35f13f6511c3cebb8eed0d9894
 
 goFirst : Player
 goFirst = A

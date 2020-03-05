@@ -42,8 +42,6 @@ main = do
                                     compile_prelude ast)
                         else   putStrLn error
     
-    let (valid, error) = check_start(ast)
-    putStrLn error
    
     --print (run ast)
     

@@ -34,7 +34,6 @@ import Data.List
   rparen                        { TokenRParen pos }
   lcurly                        { TokenLCurly pos }
   rcurly                        { TokenRCurly pos }
-  pipe                          { TokenPipe pos }
   arrow                         { TokenArrow pos }
   comma                         { TokenComa pos }
   eq                            { TokenEQ pos }
@@ -72,10 +71,13 @@ TupleElement  : WeakVariable                                              { Tupl
               | TupleList                                                 { $1 }
                   
 Btype         : typename                                                  { Btype (name $1) (tokPosition $1) }
-Xtype         : Btype pipe XtypeHelper                                    { Xtype $1 $3 (bbypePosition $1) }
+Etype         : lcurly EtypeHelper rcurly amp Etype                       { $2 ++ $5 }
+              | lcurly EtypeHelper rcurly                                 { $2 }
+EtypeHelper   : typename comma EtypeHelper                                { [$1] ++ $3 }  
+              | typename                                                  { [$1] }
+Xtype         : Btype amp Etype                                           { Xtype $1 (map name $3) (bbypePosition $1) }
               | Btype                                                     { Xtype $1 [] (bbypePosition $1) }
-XtypeHelper   : typename pipe XtypeHelper                                 { [(name $1)] ++ $3 }
-              | typename                                                  { [(name $1)] }
+              | Etype                                                     { let pos = (tokPosition ($1 !! 1)) in Xtype ( Btype "Void" pos ) (map name $1) pos}
 Ttype1        : Xtype comma Ttype1                                        { Ttype ([$1] ++ types($3)) (xtypePosition $1) }
               | Xtype comma Xtype                                         { Ttype ([$1] ++ [$3]) (xtypePosition $1) }
 Ttype         : lparen Ttype1 rparen                                      { $2 }

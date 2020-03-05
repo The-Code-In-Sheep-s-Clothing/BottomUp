@@ -1,4 +1,4 @@
-type Board = Array(3,3) of Player|Empty
+type Board = Array(3,3) of Player & { Empty }
 type Input = Position
 
 initialBoard : Board
@@ -20,7 +20,7 @@ gameOver(b,p) = or(threeInARow(b),isFull(b))
 isValid : (Board,Position) -> Bool
 isValid(b,p) = if b ! p == Empty then True else False
 
-outcome : (Board,Player) -> Player|Tie
+outcome : (Board,Player) -> Player & { Tie }
 outcome(b,p) = if inARow(3,A,b) then A else
                if inARow(3,B,b) then B else
                Tie
@@ -30,8 +30,8 @@ tryMove(b,p) = let pos = input(b) in
                    if isValid(b,pos) then (place(p,b,pos),next(p))
                                      else (b,p)
 
-play : (Board,Player) -> Player|Tie
+play : (Board,Player) -> Player & { Tie }
 play(a,b) = outcome(loop(a,b))
 
-result : Player|Tie
+result : Player & { Tie }
 result = play(initialBoard,goFirst)

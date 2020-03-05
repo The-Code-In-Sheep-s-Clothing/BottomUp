@@ -4,7 +4,8 @@
 Parser.hs
 Lexer.hs
 Main
-output.hs
+OutputCode.hs
+OutputBuiltins.hs
 dist
 dist/*
 dist-newstyle

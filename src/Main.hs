@@ -30,20 +30,19 @@ main = do
             --let (valid, error) = check_start ast
                 --in if(valid) 
                         --then   
-                            writeFile "OutputCode.hs" (compile ast) >> 
-                            writeFile "OutputBuiltins.hs" (compile_builtin ast)
+            writeFile "OutputCode.hs" (compile ast) >> writeFile "OutputBuiltins.hs" (compile_builtin ast)
                         --else   putStrLn error   
     case parsedEitherPrelude of
         Left err -> putStrLn "Error in prelude" >> putStrLn err
         Right ast -> do
-            -- print ast
+            print ast
             --let (valid, error) = check_start ast
                 --in if(valid) 
                         --then   
-                            appendFile "OutputBuiltins.hs" ("\n\n -- Prelude \n" ++ 
-                                    compile_prelude ast)
+            appendFile "OutputBuiltins.hs" ("\n\n -- Prelude \n" ++ 
+                    compile_prelude ast)
                         --else   putStrLn error
-    -}
+
     -- let (valid, error) = check_start(ast)
     -- putStrLn error
    

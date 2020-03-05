@@ -85,7 +85,7 @@ data Expr           = EInt              {   value           :: Int
                     | Paren             {   parenExpr       :: Expr
                                         ,   exprPosition    :: AlexPosn
                                         }
-                    | TupleExpr         {   values          :: Tuple
+                    | ETuple            {   values          :: Tuple
                                         ,   exprPosition    :: AlexPosn
                                         }
                     | FunctionApp       {   functionName    :: String

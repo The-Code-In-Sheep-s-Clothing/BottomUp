@@ -5,7 +5,6 @@ import Compiler
 import Ast
 import TypeChecker
 import Control.Exception
--- import TypeChecker
 
 type Env = String -> [Stmt]
 emptyEnv = error "Not found"

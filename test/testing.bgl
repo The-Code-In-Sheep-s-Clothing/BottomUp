@@ -2,7 +2,7 @@ type Board = Array(3,3) of Player|Empty
 type Input = Position
 
 initialBoard : Board
-initialBoard(x, y) = Empty
+initialBoard ! (x, y) = Empty
 
 goFirst : Player
 goFirst = A
@@ -18,7 +18,7 @@ gameOver : (Board,Player) -> Bool
 gameOver(b,p) = or(threeInARow(b),isFull(b))
 
 isValid : (Board,Position) -> Bool
-isValid(b,p) = if getBoardContent(b,p) == Empty then True else False
+isValid(b,p) = if b ! p == Empty then True else False
 
 outcome : (Board,Player) -> Player|Tie
 outcome(b,p) = if inARow(3,A,b) then A else

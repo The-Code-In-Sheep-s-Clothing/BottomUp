@@ -25,7 +25,7 @@ main = do
     case parsedEither of
         Left err -> putStrLn err
         Right ast -> do
-            print ast
+            --print ast
             let (valid, error) = check_start ast
                 in if(valid) 
                         then   writeFile "output.hs" (compile ast)

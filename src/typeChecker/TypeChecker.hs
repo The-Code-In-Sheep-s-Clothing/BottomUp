@@ -14,6 +14,7 @@ data NewType = Sgl BaseType
              | Dbl [BaseType]
              | Tpl [[BaseType]]
              deriving Show
+             
 data BaseType  = Base String 
                | Sls String
                | Ifblk
@@ -359,6 +360,10 @@ eparse :: [NewType] -> Bool
 eparse [Sgl Em] = False
 eparse _  = True
 
+check_type_init_board :: Type -> Bool
+check_type_init_board (Ptype' (Xtype' (Xtype (Btype "Board" _) [] _) _) _) = True
+check_type_init_board _ = False
+
 check_stmt :: Stmt -> State -> (NewType, Bool, String)
 check_stmt (Conditional e stmt1 stmt2 _) st = let (type1, valid1, error1) = (check_expr e st)
                                                   (type2, valid2, error2) = check_stmt stmt1 st
@@ -379,8 +384,9 @@ check_stmt (While e1 e2 _) st          = let (type1, valid1, error1) = check_exp
                                         in if(type_comp type1 (Sgl (Base "Bool")) st)
                                             then (type2, valid1 && valid2, error1 ++ error2)
                                             else (Sgl Em, False, "\nExpression " ++ (show e1) ++ " is not of type Bool" ++ error1 ++ error2)
-check_stmt (Valdef (Signature s t _) e _) (State fs ts)          = if(s == "initialBoard") 
-                                                                        then check_initial_board e (head (lookup5 ts "@@@@")) (State fs ts)
+check_stmt (Valdef (Signature s t _) e _) (State fs ts)          = if(check_type_init_board t) 
+                                                                        then let (type1, bcheck1, valid1, error1) = check_initial_board e (head (lookup5 ts "@@@@")) (form_board (head (lookup5 ts "&&&&"))) (not((length e) == 1)) (State fs ts)
+                                                                                 in (type1, valid1, error1)
                                                                         else check_func_call e (head (lookup5 fs s)) (State fs ts)
 check_stmt (SExpr e _) st               = check_expr e st
 check_stmt _ _                          = (Sgl Em, True, "")
@@ -415,23 +421,62 @@ check_args (Tuple e _) (Fdef s1 (Tpl t1) t2) (State fs ts) =  if((length e) == (
                                                                 then tpl_arg_def s1 e t1 (State fs ts)
                                                                 else (State fs ts, False, "\nnumber of arguments in def of function " ++ s1 ++ " do not match")
 
-check_initial_board_tpl :: Expr -> Bool
-check_initial_board_tpl (Tuple [ESymbol s1 _, ESymbol s2 _] _) = (s1 == "x") && (s2 == "y")
-check_initial_board_tpl (Tuple [ESymbol s _, EInt _ _] _) = s == "x"
-check_initial_board_tpl (Tuple [EInt _ _, ESymbol s _] _) = s == "y"
-check_initial_board_tpl (Tuple [EInt _ _, EInt _ _] _) = True
-check_initial_board_tpl _ = False
+add_col :: Int -> [Bool]
+add_col 0 = []
+add_col c = [False] ++ (add_col (c-1))
 
-check_initial_board :: [Equation] -> Def -> State -> (NewType, Bool, String)
-check_initial_board [Equation s t stmt _] (Tdef _ t2) st = if(check_initial_board_tpl t)
+add_row :: Int -> Int -> [[Bool]]
+add_row 0 c = []
+add_row r c = [add_col c] ++ (add_row (r-1) c) 
+
+form_board :: Def -> [[Bool]]
+form_board (Tdef _ (Dbl [Base v1, Base v2])) = add_row (read v1::Int) (read v2::Int)
+
+init_board_update_c :: [Bool] -> Int -> Int -> [Bool]
+init_board_update_c [] _ _ = []
+init_board_update_c (x:xs) c ind = if(c == 0 || c == ind)
+                                        then [True] ++ (init_board_update_c xs c (ind + 1))
+                                        else [x] ++ (init_board_update_c xs c (ind + 1))
+
+init_board_update :: [[Bool]] -> Int -> Int -> Int -> [[Bool]]
+init_board_update [] _ _ _ = []
+init_board_update (x:xs) r c ind = if(r == 0 || r == ind)
+                                        then [init_board_update_c x c 1] ++ (init_board_update xs r c (ind + 1))
+                                        else [x] ++ (init_board_update xs r c (ind + 1))
+
+check_initial_board_tpl :: Expr -> [[Bool]] -> ([[Bool]], Bool)
+check_initial_board_tpl (Tuple [ESymbol s1 _, ESymbol s2 _] _) b = if((s1 == "x") && (s2 == "y"))
+                                                                        then (init_board_update b 0 0 1, True)
+                                                                        else ([], False)
+check_initial_board_tpl (Tuple [ESymbol s _, EInt v1 _] _) b = if(s == "x")
+                                                                        then (init_board_update b 0 v1 1, True)
+                                                                        else ([], False)
+check_initial_board_tpl (Tuple [EInt v1 _, ESymbol s _] _) b = if(s == "y")
+                                                                        then (init_board_update b v1 0 1, True)
+                                                                        else ([], False)
+check_initial_board_tpl (Tuple [EInt v1 _, EInt v2 _] _) b = (init_board_update b v1 v2 1, True)
+check_initial_board_tpl _ _ = ([], False)
+
+check_initial_board :: [Equation] -> Def -> [[Bool]] -> Bool -> State -> (NewType, [[Bool]], Bool, String)
+check_initial_board [Equation s t stmt _] (Tdef _ t2) bcheck flag st = let (bcheck2, v) = check_initial_board_tpl t bcheck
+                                                                                  in if(v)
                                                                                         then let (type1, valid1, error1) = check_stmt stmt st 
                                                                                                  in if(type_comp type1 t2 st)
-                                                                                                         then (Sgl Em, valid1, error1)
-                                                                                                         else (Sgl Em, False, "\nreturn type of initialBoard is not of type " ++ (show t2) ++ error1)
-                                                                                        else (Sgl Em, False, "\narguments of initial board " ++ (show t) ++ " are not valid")
-check_initial_board (x:xs) d st = let (type1, valid1, error1) = check_initial_board [x] d st
-                                      (type2, valid2, error2) = check_initial_board xs d st
-                                      in (type1, valid1 && valid2, error1 ++ error2)
+                                                                                                         then if(flag || and (map and bcheck2))
+                                                                                                                then (type1, bcheck2, valid1, error1)
+                                                                                                                else (type1, [], False, "\nBoard is not fully initialized " ++ (show bcheck2)) 
+                                                                                                         else (Sgl Em, [], False, "\nreturn type of initialize board function " ++ s ++ " is not of type " ++ (show t2) ++ error1)
+                                                                                        else (Sgl Em, [], False, "\narguments " ++ (show t) ++ " of initialialize board function " ++ s ++ " are not valid")
+check_initial_board (x:xs) d1 bcheck _ st = let (type1, bcheck1, valid1, error1) = check_initial_board [x] d1 bcheck True st
+                                                   in if(valid1)
+                                                        then let (type2, bcheck2, valid2, error2) = check_initial_board xs d1 bcheck1 True st
+                                                                 in if(valid2)
+                                                                         then if(and (map and bcheck2))
+                                                                                 then (type1, bcheck2, True, "")
+                                                                                 else (type1, [], False, "\nBoard is not fully initialized " ++ (show bcheck2))                                                                                
+                                                                        else (type1, [], valid2, error2)                                                                   
+                                                        else (type1, [], valid1, error1) 
+                                                
 
 check_func_call :: [Equation] -> Def -> State -> (NewType, Bool, String)
 check_func_call [Equation s e stmt _] (Fdef _ t1 t2) (State fs ts) = let (state1, valid1, error1) = check_args e (Fdef s t1 t2) (State fs ts)
@@ -518,6 +563,7 @@ check_type_types (x:xs) st = let (defs, state, valid, error) = check_type_types_
 
 check_type_types_helper :: [Def] -> [Def] -> State -> ([Def], State, Bool, String)
 check_type_types_helper [] d st = (d, st, True, "")
+check_type_types_helper [(Tdef "&&&&" t)] _ (State fs ts) = ([], State fs ([Tdef "&&&&" t] ++ ts), True, "")
 check_type_types_helper [(Tdef s1 t)] d st = let (type1, defs1, state1, valid1, error1) = ast_convert [s1] t d st
                                                         in if(null defs1) 
                                                                 then (defs1, state1, valid1, error1)
@@ -598,7 +644,9 @@ check_dup_name_stmt (Valdef (Signature s t _) e _) (State fs ts) = if(lookup_sta
                                                                 else if(check_equation_name s e)
                                                                         then (State ([ftype_convert s t] ++ fs) ts, True, "")
                                                                         else (State fs ts, False, "\nFunction " ++ s ++ " has inconsistent naming" )                                                                
-check_dup_name_stmt (TypedefFunc s e t _) (State fs ts)  = if(not (s == "Board"))
-                                                then ((State fs ts), False, "\nof type not allowed for non board definitions")
-                                                else (State fs ([Tdef "@@@@" (type_convert t)] ++ ts), True, "")
+check_dup_name_stmt (TypedefFunc s (FunctionApp _ e _) t _) (State fs ts)  = if(not (s == "Board"))
+                                                                then ((State fs ts), False, "\nof type not allowed for non board definitions")
+                                                                else case e of 
+                                                                        (Tuple [EInt v1 _, EInt v2 _] _) -> (State fs ([Tdef "@@@@" (type_convert t), Tdef "&&&&" (Dbl [Base (show v1), Base (show v2)])] ++ ts), True, "")
+                                                                        _ -> (State fs ts, False, "\nboard size must be defined by (int, int) " ++ (show e))
 check_dup_name_stmt _ st = (st, True, "")

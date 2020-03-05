@@ -13,7 +13,12 @@ data Equation       = Equation          {   functionName    :: String
                                         ,   functionArgs    :: Expr
                                         ,   functionStmt    :: Stmt
                                         ,   equPosition     :: AlexPosn
-                                        }   
+                                        }
+                    | ArrayEquation     {   functionName    :: String
+                                        ,   functionArgs    :: Expr
+                                        ,   functionStmt    :: Stmt
+                                        ,   equPosition     :: AlexPosn
+                                        }  
                     deriving Show
 
 data Binop          = Plus              {   binopPosition   :: AlexPosn }
@@ -25,6 +30,7 @@ data Binop          = Plus              {   binopPosition   :: AlexPosn }
                     | GreaterThan       {   binopPosition   :: AlexPosn }
                     | LessThanEqual     {   binopPosition   :: AlexPosn }
                     | GreaterThanEqual  {   binopPosition   :: AlexPosn }
+                    | Bang              {   binopPosition   :: AlexPosn }
                     deriving Show
 
 data Stmt           = Conditional       {   condition       :: Expr

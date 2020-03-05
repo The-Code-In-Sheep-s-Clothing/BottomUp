@@ -9,7 +9,9 @@ import System.Exit
 
 $digit = 0-9
 $alpha = [a-zA-Z]
-@symbol = $alpha [$alpha $digit \_ \']*
+$capital = [A-Z]
+$lower = [a-z]
+$alphaNumeric = [$alpha $digit \_ \']
 
 tokens :-
   $white+                 { mkL LexWhite }
@@ -38,8 +40,13 @@ tokens :-
   "<"                     { mkL LexLT }
   "=<"                    { mkL LexLTE }
   "=>"                    { mkL LexGTE }
-  @symbol $white* ":"     { mkL LexFunctionDef }
-  @symbol                 { mkL LexSym }
+  "!"                     { mkL LexBang }
+  "{"                     { mkL LexLCurly }
+  "}"                     { mkL LexRCurly }
+  ":"                     { mkL LexColon}
+  "&"                     { mkL LexAmp }
+  $lower $alphaNumeric*   { mkL LexSym }
+  $capital $alphaNumeric* { mkL LexTypeName }
   $digit+                 { mkL LexInt }
   True                    { mkL LexBool }
   Frue                    { mkL LexBool }
@@ -50,17 +57,24 @@ tokens :-
 
 data AlexUserState = AlexUserState
                    {
-                       readInput :: String
+                      readInput :: String,
+                      nextToken :: Token
                    }
 
 alexInitUserState :: AlexUserState
-alexInitUserState  = AlexUserState { readInput = "" }
+alexInitUserState  = AlexUserState { readInput = "", nextToken = TokenSOF }
 
 getLexerReadInputValue :: Alex String
 getLexerReadInputValue  = Alex $ \s@AlexState{alex_ust=ust} -> Right (s, readInput ust)
 
 addLexerReadInputValue    :: String -> Alex ()
 addLexerReadInputValue ss  = Alex $ \s -> Right (s{alex_ust=(alex_ust s){readInput=readInput (alex_ust s) ++ ss}}, ())
+
+getNextToken :: Alex Token
+getNextToken = Alex $ \s@AlexState{alex_ust=ust} -> Right (s, nextToken ust)
+
+setNextToken :: Token -> Alex ()
+setNextToken ss = Alex $ \s -> Right (s{alex_ust=(alex_ust s){nextToken=ss}}, ())
 
 
 -- there might be a library for this, but I dont know how to include
@@ -95,13 +109,20 @@ prettyToken ( TokenGT _ )            = "<"
 prettyToken ( TokenLT _ )            = ">"
 prettyToken ( TokenLTE _ )           = ">="
 prettyToken ( TokenGTE _ )           = "<="
-prettyToken ( TokenSym _ _ )         = "symbol (Type or variable name)"
+prettyToken ( TokenSym _ _ )         = "symbol (variable name)"
+prettyToken ( TokenTypeName _ _ )    = "type (Type name)"
 prettyToken ( TokenFunctionDef _ _ ) = "Function Definition"
 prettyToken ( TokenInt _  _ )        = "Integer"
 prettyToken ( TokenBool _ _ )        = "Boolean"
 prettyToken ( TokenEOF )             = "End of File"
 prettyToken ( TokenError _ _ )       = "Lexical Error"
 prettyToken ( TokenWhite _ _ )       = "Whitespace"
+prettyToken ( TokenBang _ )          = "!"
+prettyToken ( TokenLCurly _ )        = "{"
+prettyToken ( TokenRCurly _ )        = "}"
+prettyToken ( TokenColon _ )         = ":"
+prettyToken ( TokenAmp _ )           = "&"
+prettyToken ( TokenSOF )             = "Start of File"
 
 -- The token type:
 data Token    = TokenComment      { tokPosition :: AlexPosn, comment :: String }
@@ -130,12 +151,19 @@ data Token    = TokenComment      { tokPosition :: AlexPosn, comment :: String }
               | TokenLTE          { tokPosition :: AlexPosn }
               | TokenGTE          { tokPosition :: AlexPosn }
               | TokenSym          { tokPosition :: AlexPosn, name :: String }
+              | TokenTypeName     { tokPosition :: AlexPosn, name :: String }
               | TokenFunctionDef  { tokPosition :: AlexPosn, name :: String }
               | TokenInt          { tokPosition :: AlexPosn, int :: Int }
               | TokenBool         { tokPosition :: AlexPosn, bool :: Bool }
               | TokenEOF 
+              | TokenSOF
               | TokenError        { tokPosition :: AlexPosn, text :: String }
               | TokenWhite        { tokPosition :: AlexPosn, text :: String }
+              | TokenBang         { tokPosition :: AlexPosn }
+              | TokenLCurly       { tokPosition :: AlexPosn }
+              | TokenRCurly       { tokPosition :: AlexPosn }
+              | TokenColon        { tokPosition :: AlexPosn }
+              | TokenAmp          { tokPosition :: AlexPosn }
               deriving (Eq,Show)
 
 mkL :: LexClass -> AlexInput -> Int -> Alex Token
@@ -169,11 +197,17 @@ mkL c (p, _, _, str) len = let t = take len str
                               LexLTE          -> return ( TokenLTE p )
                               LexGTE          -> return ( TokenGTE p )
                               LexSym          -> return ( TokenSym p t )
+                              LexTypeName     -> return ( TokenTypeName p t )
                               LexFunctionDef  -> return ( TokenFunctionDef p (stripFirstWord t) )
                               LexInt          -> return ( TokenInt p ((read t) :: Int) )
                               LexBool         -> return ( TokenBool p (if t == "true" then True else False) )
                               LexError        -> return ( TokenError p t )
                               LexWhite        -> return ( TokenWhite p t )
+                              LexBang         -> return ( TokenBang p )
+                              LexLCurly       -> return ( TokenLCurly p )
+                              LexRCurly       -> return ( TokenRCurly p )
+                              LexColon        -> return ( TokenColon p )
+                              LexAmp          -> return ( TokenAmp p )
 
 
 -- No idea why I have to write this myself. Documentation doesn't mention it.
@@ -206,12 +240,18 @@ data LexClass = LexComment
               | LexLTE
               | LexGTE
               | LexSym
+              | LexTypeName
               | LexFunctionDef
               | LexInt
               | LexBool
               | LexEOF
               | LexError
               | LexWhite
+              | LexBang
+              | LexLCurly
+              | LexRCurly
+              | LexColon
+              | LexAmp
               deriving (Eq,Show)
 
 data LexerError = LexerError String
@@ -227,12 +267,27 @@ printError s = do
   read_in <- getLexerReadInputValue
   alexError $ "\n" ++ s ++ showPosn (AlexPn a line col) ++ splitOn "\n" (read_in ++ rem_in) !! (line - 1) ++ "\n" ++ (replicate (col - 2) ' ') ++ "^"
 
+lexNextToken :: Alex Token
+lexNextToken = do
+  next <- alexMonadScan
+  setNextToken next
+  case next of
+    
+    TokenError posn text -> printError $ "unexpected character " ++ text ++ "\n"
+    TokenWhite _ _ -> lexNextToken
+    _ -> getNextToken
+
 lexwrap :: (Token -> Alex a) -> Alex a
 lexwrap cont = do
-    token <- alexMonadScan
+    token <- getNextToken
+    next <- lexNextToken
     case token of
-      TokenError posn text -> printError $ "unexpected character " ++ text ++ "\n"
-      TokenWhite _ _ -> lexwrap cont
+      -- special case for start of file
+      TokenSOF -> lexwrap cont
+      -- fix special case for function starts
+      TokenSym posn name -> case next of 
+        TokenColon _ -> cont $ TokenFunctionDef posn name
+        _ -> cont $ TokenSym posn name
       _ -> cont token
 
 }

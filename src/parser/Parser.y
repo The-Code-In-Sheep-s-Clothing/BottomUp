@@ -32,6 +32,8 @@ import Data.List
   div                           { TokenDiv pos }
   lparen                        { TokenLParen pos }
   rparen                        { TokenRParen pos }
+  lcurly                        { TokenLCurly pos }
+  rcurly                        { TokenRCurly pos }
   pipe                          { TokenPipe pos }
   arrow                         { TokenArrow pos }
   comma                         { TokenComa pos }
@@ -41,10 +43,14 @@ import Data.List
   lte                           { TokenLTE pos }
   gte                           { TokenGTE pos }
   symbol                        { TokenSym pos name }
+  typename                      { TokenTypeName pos name }
   functionDef                   { TokenFunctionDef pos name }
   comment                       { TokenComment pos comment }
+  colon                         { TokenColon pos }
+  amp                           { TokenAmp pos }
+  bang                          { TokenBang pos }
 
-%left eq gt lt lte gte
+%left eq gt lt lte gte bang
 %left plus minus
 %left times div
 %left assign
@@ -62,11 +68,11 @@ TupleList     : Variable comma List                                       { [$1]
 List          : Variable comma List                                       { [$1] ++ $3 }
               | Variable                                                  { [$1] }
                   
-Btype         : symbol                                                    { Btype (name $1) (tokPosition $1) }
+Btype         : typename                                                  { Btype (name $1) (tokPosition $1) }
 Xtype         : Btype pipe XtypeHelper                                    { Xtype $1 $3 (bbypePosition $1) }
               | Btype                                                     { Xtype $1 [] (bbypePosition $1) }
-XtypeHelper   : symbol pipe XtypeHelper                                   { [(name $1)] ++ $3 }
-              | symbol                                                    { [(name $1)] }
+XtypeHelper   : typename pipe XtypeHelper                                 { [(name $1)] ++ $3 }
+              | typename                                                  { [(name $1)] }
 Ttype1        : Xtype comma Ttype1                                        { Ttype ([$1] ++ types($3)) (xtypePosition $1) }
               | Xtype comma Xtype                                         { Ttype ([$1] ++ [$3]) (xtypePosition $1) }
 Ttype         : lparen Ttype1 rparen                                      { $2 }
@@ -76,14 +82,17 @@ Ftype         : Ptype arrow Ptype                                         { Ftyp
 Type          : Ptype                                                     { Ptype' $1 (ptypePosition $1) }
               | Ftype                                                     { Ftype' $1 (ftypePosition $1) }
                   
-Signature     : functionDef Type                                          { Signature (name $1) $2 (tokPosition $1) }
+Signature     : functionDef colon Type                                    { Signature (name $1) $3 (tokPosition $1) }
 Equation      : symbol OptionalList assign WeakStmt                       { Equation (name $1) $2 $4 (tokPosition $1) }
-Equations     : Equation Equations                                        { [$1] ++ $2 }
-              | Equation                                                  { [$1] }
+ArrayEquation : symbol bang lparen TupleList rparen assign WeakStmt       { ArrayEquation (name $1) (Tuple $4 $ tokPosition $3) $7 (tokPosition $1) }
+ArrayEquations: ArrayEquation ArrayEquations                              { [$1] ++ $2 }
+              | ArrayEquation                                             { [$1] }
+Equations     : Equation                                                  { [$1] }
+              | ArrayEquations                                            { $1 }
                 
 Stmt          : Signature Equations                                       { Valdef $1 $2 (sigPosition $1)}
-              | type symbol assign Type                                   { Typedef (name $2) $4 (tokPosition $1) }
-              | type symbol assign FunctionApp of Type                    { TypedefFunc (name $2) $4 $6 (tokPosition $1) }
+              | type typename assign Type                                 { Typedef (name $2) $4 (tokPosition $1) }
+              | type typename assign typename OptionalArgs of Type        { TypedefFunc (name $2) (FunctionApp (name $4) $5 (tokPosition $4)) $7 (tokPosition $1) }
               | comment                                                   { SComment (comment $1) (tokPosition $1) }
                 
                 
@@ -103,9 +112,11 @@ Expr          : Variable                                                  { $1 }
               | Expr lt Expr                                              { Infix $1 (LessThan $ tokPosition $2) $3 (exprPosition $1) }
               | Expr lte Expr                                             { Infix $1 (LessThanEqual $ tokPosition $2) $3 (exprPosition $1) }
               | Expr gte Expr                                             { Infix $1 (GreaterThanEqual $ tokPosition $2) $3 (exprPosition $1) }
+              | Expr bang Expr                                            { Infix $1 (Bang $ tokPosition $2) $3 (exprPosition $1) }
                               
 Variable      : int                                                       { EInt (int $1) (tokPosition $1)}
               | symbol                                                    { ESymbol (name $1) (tokPosition $1)}
+              | typename                                                  { ESymbol (name $1) (tokPosition $1)} -- this WILL change
               | FunctionApp                                               { $1 }
               | lparen TupleList rparen                                   { Tuple $2 (tokPosition $1)}
                               

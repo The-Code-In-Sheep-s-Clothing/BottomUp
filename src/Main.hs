@@ -5,7 +5,6 @@ import Compiler
 import Ast
 import TypeChecker
 import Control.Exception
--- import TypeChecker
 
 type Env = String -> [Stmt]
 emptyEnv = error "Not found"
@@ -20,20 +19,31 @@ main :: IO ()
 main = do
     file <- getContents
     prelude <- getFileContent "" "prelude.bgl"
-    let parsedEither = parse $ file ++ "\n\n\n-- PRELUDE\n" ++ prelude
+    let parsedEitherFile = parse $ file
+    let parsedEitherPrelude = parse $ prelude
 
-    case parsedEither of
-        Left err -> putStrLn err
+    case parsedEitherFile of
+        Left err -> putStrLn "Error in boardgame code" >> putStrLn err
         Right ast -> do
-            --print ast
+            -- print ast
             let (valid, error) = check_start ast
                 in if(valid) 
-                        then   writeFile "output.hs" (compile ast)
+                        then   writeFile "OutputCode.hs" (compile ast) >> 
+                            writeFile "OutputBuiltins.hs" (compile_builtin ast)
                         else   putStrLn error
             
+    case parsedEitherPrelude of
+        Left err -> putStrLn "Error in prelude" >> putStrLn err
+        Right ast -> do
+            -- print ast
+            let (valid, error) = check_start ast
+                in if(valid) 
+                        then   appendFile "OutputBuiltins.hs" ("\n\n -- Prelude \n" ++ 
+                                    compile_prelude ast)
+                        else   putStrLn error
     
-    -- let (valid, error) = check_start(ast)
-    -- putStrLn error
+    let (valid, error) = check_start(ast)
+    putStrLn error
    
     --print (run ast)
     

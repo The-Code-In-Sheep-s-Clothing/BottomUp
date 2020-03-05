@@ -78,9 +78,11 @@ EtypeHelper   : typename comma EtypeHelper                                { [$1]
 Xtype         : Btype amp Etype                                           { Xtype $1 (map name $3) (bbypePosition $1) }
               | Btype                                                     { Xtype $1 [] (bbypePosition $1) }
               | Etype                                                     { let pos = (tokPosition ($1 !! 1)) in Xtype ( Btype "Void" pos ) (map name $1) pos}
-Ttype1        : Xtype comma Ttype1                                        { Ttype ([$1] ++ types($3)) (xtypePosition $1) }
-              | Xtype comma Xtype                                         { Ttype ([$1] ++ [$3]) (xtypePosition $1) }
-Ttype         : lparen Ttype1 rparen                                      { $2 }
+Ttype         : lparen TtypeElement comma TtypeHelper rparen               { TtypeList ([$2] ++ $4) (tokPosition $1) }
+TtypeHelper   : TtypeElement comma TtypeHelper                            { [$1] ++ $3 }
+              | TtypeElement                                              { [$1] }
+TtypeElement  : Xtype                                                     { TtypeValue $1 (xtypePosition $1)}
+              | Ttype                                                     { $1 }
 Ptype         : Ttype                                                     { Ttype' $1 (ttypePosition $1) }
               | Xtype                                                     { Xtype' $1 (xtypePosition $1) }
 Ftype         : Ptype arrow Ptype                                         { Ftype $1 $3 (ptypePosition $1) }

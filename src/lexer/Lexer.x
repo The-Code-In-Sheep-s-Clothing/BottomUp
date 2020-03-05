@@ -32,7 +32,6 @@ tokens :-
   "/"                     { mkL LexDiv }
   "("                     { mkL LexLParen }
   ")"                     { mkL LexRParen }
-  "|"                     { mkL LexPipe }
   "->"                    { mkL LexArrow }
   ","                     { mkL LexComa }
   "=="                    { mkL LexEQ }
@@ -43,7 +42,7 @@ tokens :-
   "!"                     { mkL LexBang }
   "{"                     { mkL LexLCurly }
   "}"                     { mkL LexRCurly }
-  ":"                     { mkL LexColon}
+  ":"                     { mkL LexColon }
   "&"                     { mkL LexAmp }
   $lower $alphaNumeric*   { mkL LexSym }
   $capital $alphaNumeric* { mkL LexTypeName }
@@ -101,7 +100,6 @@ prettyToken ( TokenTimes _ )         = "*"
 prettyToken ( TokenDiv _ )           = "/"
 prettyToken ( TokenLParen _ )        = "("
 prettyToken ( TokenRParen _ )        = ")"
-prettyToken ( TokenPipe _ )          = "|"
 prettyToken ( TokenArrow _ )         = "->"
 prettyToken ( TokenComa _ )          = ","
 prettyToken ( TokenEQ _ )            = "=="
@@ -142,7 +140,6 @@ data Token    = TokenComment      { tokPosition :: AlexPosn, comment :: String }
               | TokenDiv          { tokPosition :: AlexPosn }
               | TokenLParen       { tokPosition :: AlexPosn }
               | TokenRParen       { tokPosition :: AlexPosn }
-              | TokenPipe         { tokPosition :: AlexPosn }
               | TokenArrow        { tokPosition :: AlexPosn }
               | TokenComa         { tokPosition :: AlexPosn }
               | TokenEQ           { tokPosition :: AlexPosn }
@@ -188,7 +185,6 @@ mkL c (p, _, _, str) len = let t = take len str
                               LexDiv          -> return ( TokenDiv p )
                               LexLParen       -> return ( TokenLParen p )
                               LexRParen       -> return ( TokenRParen p )
-                              LexPipe         -> return ( TokenPipe p )
                               LexArrow        -> return ( TokenArrow p )
                               LexComa         -> return ( TokenComa p )
                               LexEQ           -> return ( TokenEQ p )
@@ -231,7 +227,6 @@ data LexClass = LexComment
               | LexDiv
               | LexLParen
               | LexRParen
-              | LexPipe
               | LexArrow
               | LexComa
               | LexEQ

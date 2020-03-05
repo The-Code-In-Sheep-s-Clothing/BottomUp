@@ -1,7 +1,7 @@
 module Main where
 import Parser
 import Lexer
---import Compiler
+import Compiler
 import Ast
 --import TypeChecker
 import Control.Exception
@@ -27,20 +27,22 @@ main = do
         Left err -> putStrLn "Error in boardgame code" >> putStrLn err
         Right ast -> do
             print ast
-            {-let (valid, error) = check_start ast
-                in if(valid) 
-                        then   writeFile "OutputCode.hs" (compile ast) >> 
+            --let (valid, error) = check_start ast
+                --in if(valid) 
+                        --then   
+                            writeFile "OutputCode.hs" (compile ast) >> 
                             writeFile "OutputBuiltins.hs" (compile_builtin ast)
-                        else   putStrLn error   
+                        --else   putStrLn error   
     case parsedEitherPrelude of
         Left err -> putStrLn "Error in prelude" >> putStrLn err
         Right ast -> do
             -- print ast
-            let (valid, error) = check_start ast
-                in if(valid) 
-                        then   appendFile "OutputBuiltins.hs" ("\n\n -- Prelude \n" ++ 
+            --let (valid, error) = check_start ast
+                --in if(valid) 
+                        --then   
+                            appendFile "OutputBuiltins.hs" ("\n\n -- Prelude \n" ++ 
                                     compile_prelude ast)
-                        else   putStrLn error
+                        --else   putStrLn error
     -}
     -- let (valid, error) = check_start(ast)
     -- putStrLn error

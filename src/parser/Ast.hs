@@ -111,7 +111,10 @@ data Xtype          = Xtype             {   btype           :: Btype
                                         }   
                     deriving Show
 
-data Ttype          = Ttype             {   types           :: [Xtype]
+data Ttype          = TtypeValue        {   tuplevals       :: [Xtype]
+                                        ,   ttypePosition   :: AlexPosn
+                                        }
+                    = TtypeList         {   tupleelements   :: [Ttype]
                                         ,   ttypePosition   :: AlexPosn
                                         }   
                     deriving Show

@@ -204,7 +204,8 @@ builtin_state = State  [Fdef "A" (Sgl Em) (Sgl (Sls "A")),
                         Fdef "place" (Tpl [[Base "Player"], [Base "Board"], [Base "Position"]]) (Sgl (Base "Board")),
                         Fdef "next" (Sgl (Base "Player")) (Sgl (Base "Player")),
                         Fdef "True" (Sgl Em) (Sgl (Base "Bool")),
-                        Fdef "False" (Sgl Em) (Sgl (Base "Bool"))] 
+                        Fdef "False" (Sgl Em) (Sgl (Base "Bool")),
+                        Fdef "Tie" (Sgl Em) (Sgl (Sls "Tie"))] 
                        [Tdef "Bool" (Sgl (Base "Bool")), 
                         Tdef "Int" (Sgl (Base "Int")), 
                         Tdef "Player" (Dbl [Sls "A", Sls "B"]), 
@@ -472,10 +473,10 @@ check_func_types_helper (Fdef s ti to) (State fs ts) = let (state1, type1, valid
 full_type_to_str :: String -> NewType -> State -> (State, NewType, Bool, String)
 full_type_to_str _ (Sgl Em) st = (st, (Sgl Em), True, "")
 full_type_to_str fstr (Sgl (Base s)) (State fs ts) = if(exists_in_sls fs s) 
-                                                        then (State fs ts, (Sgl Em), False, "\n1 -> Invalid type " ++ s ++ " in function " ++ fstr)
+                                                        then (State fs ts, (Sgl Em), False, "\nInvalid type " ++ s ++ " in function " ++ fstr)
                                                         else if(exists_in ts s)
                                                                 then (State fs ts, Sgl (Base s), True, "")
-                                                                else (State fs ts, (Sgl Em), False, "\n Type " ++ s ++ " in function " ++ fstr ++ " is undefined")
+                                                                else (State fs ts, (Sgl Em), False, "\nType " ++ s ++ " in function " ++ fstr ++ " is undefined")
 full_type_to_str fstr (Dbl x) st = let (state1, type1, valid1, error1) = full_type_to_str_x_pre fstr x st 
                                         in (state1, Dbl type1, valid1, error1)
 full_type_to_str fstr (Tpl (x:xs)) st = let (state1, type1, valid1, error1) = full_type_to_str_x_pre fstr x st
@@ -494,8 +495,7 @@ full_type_to_str_x_pre fstr ((Base s):xs) (State fs ts) = if(exists_in ts s)
                                                                                 else if(exists_in fs s)
                                                                                         then let (state1, type1, valid1, error1) = full_type_to_str_x fstr xs (State fs ts)
                                                                                                  in (state1, [], False, "\n in definition of function " ++ fstr ++ " name " ++ s ++ " already in use" ++ error1)
-                                                                                        else let (state1, type1, valid1, error1) = full_type_to_str_x fstr xs (State (fs ++ [Fdef s (Sgl Em) (Sgl (Sls s))]) ts)
-                                                                                                 in (state1, [Sls s] ++ type1, valid1, error1)
+                                                                                        else (State fs ts, [], False, "\n type " ++ s ++ " is undefined in definition of function " ++ fstr)
 
 full_type_to_str_x :: String -> [BaseType] -> State -> (State, [BaseType], Bool, String)
 full_type_to_str_x fstr ((Sls s):xs) (State fs ts) = if(exists_in ts s)
@@ -507,8 +507,7 @@ full_type_to_str_x fstr ((Sls s):xs) (State fs ts) = if(exists_in ts s)
                                                                         else if(exists_in fs s)
                                                                                 then let (state1, type1, valid1, error1) = full_type_to_str_x fstr xs (State fs ts)
                                                                                          in (state1, [], False, "\n in definition of function " ++ fstr ++ " name " ++ s ++ " already in use" ++ error1)
-                                                                                else let (state1, type1, valid1, error1) = full_type_to_str_x fstr xs (State (fs ++ [Fdef s (Sgl Em) (Sgl (Sls s))]) ts)
-                                                                                         in (state1, [Sls s] ++ type1, valid1, error1)
+                                                                                else (State fs ts, [], False, "\n type " ++ s ++ " is undefined in definition of function " ++ fstr)
 full_type_to_str_x fstr [] st = (st, [], True, "")
 
 

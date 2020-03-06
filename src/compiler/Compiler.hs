@@ -122,7 +122,7 @@ compile_input_funcs t = let x = (intercalate "," (["Int" | x <- [1..count_tuple_
 count_tuple_type :: Type -> Int
 count_tuple_type (Ptype' (Xtype' (Xtype (Btype "Position" _) [] _) _) _) = 2
 count_tuple_type (Ptype' (Xtype' (Xtype b [] _) _) _) = 1
-count_tuple_type (Ptype' (Ttype' (TtypeList t _) _) _) = length t --this doesnt really work for nested tuples
+count_tuple_type (Ptype' (Ttype' (Ttype t _) _) _) = length t --this doesnt really work for nested tuples
 
 compile_type :: Type -> StateRet
 compile_type (Ptype' p _) = compile_ptype p
@@ -160,9 +160,10 @@ add_content_to_state (Ptype' (Xtype' (Xtype b l _) _) _) = do
 -- TODO: Should this be possible?
 add_content_to_state _ = return "Not Possible"
 
+
+
 compile_ttype :: Ttype -> StateRet
-compile_ttype (TtypeList x _) = "(" ++> (intercalateM "," (map compile_ttype x)) <++ ")"
-compile_ttype (TtypeValue x _) = "" ++> compile_xtype x
+compile_ttype (Ttype x _) = "(" ++> (intercalateM "," (map compile_ptype x)) <++ ")"
 
 compile_btype :: Btype -> String
 -- compile_btype (Btype "Board") = "Board Content"

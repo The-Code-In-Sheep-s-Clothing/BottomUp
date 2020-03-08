@@ -19,6 +19,8 @@ data BaseType  = Base String
                | Sls String
                | Ifblk
                | Endif
+               | Tplblk
+               | Endtpl
                | Em
                deriving (Show,Eq)
 
@@ -116,9 +118,9 @@ type_convert (Ptype' (Xtype' (Xtype x [] _) _) _) = Sgl (btype_convert x)
 type_convert (Ptype' (Xtype' x _) _) = Dbl (xtype_convert x) 
 
 ttype_convert :: Ttype -> [[BaseType]]
-ttype_convert (Ttype [] _) = []
-ttype_convert (Ttype ((Xtype x [] _):xs) p) = [[btype_convert x]] ++ (ttype_convert (Ttype xs p))
-ttype_convert (Ttype (x:xs) p) =  [xtype_convert x] ++ (ttype_convert (Ttype xs p))
+ttype_convert (TtypeValue [] _) = []
+ttype_convert (TtypeValue ((Xtype x [] _):xs) p) = [[btype_convert x]] ++ (ttype_convert (TtypeValue xs p))
+ttype_convert (TtypeValue (x:xs) p) =  [xtype_convert x] ++ (ttype_convert (TtypeValue xs p))
 
 
 xtype_convert :: Xtype -> [BaseType]

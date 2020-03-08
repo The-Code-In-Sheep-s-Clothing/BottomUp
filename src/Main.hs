@@ -1,9 +1,9 @@
 module Main where
 import Parser
 import Lexer
---import Compiler
+import Compiler
 import Ast
---import TypeChecker
+import TypeChecker
 import Control.Exception
 
 type Env = String -> [Stmt]
@@ -27,10 +27,9 @@ main = do
         Left err -> putStrLn "Error in boardgame code" >> putStrLn err
         Right ast -> do
             print ast
-            {-let (valid, error) = check_start ast
+            let (valid, error) = check_start ast
                 in if(valid) 
-                        then   writeFile "OutputCode.hs" (compile ast) >> 
-                            writeFile "OutputBuiltins.hs" (compile_builtin ast)
+                        then writeFile "OutputCode.hs" (compile ast) >> writeFile "OutputBuiltins.hs" (compile_builtin ast)  
                         else   putStrLn error   
     case parsedEitherPrelude of
         Left err -> putStrLn "Error in prelude" >> putStrLn err

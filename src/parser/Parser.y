@@ -58,9 +58,9 @@ import Data.List
 Stmts         : Stmt Stmts                                                { [$1] ++ $2 }
               | Stmt                                                      { [$1] }
 
-RequiredArgs  : TupleList                                                 { TupleExpr $1 (tuplePosition $1) }
+RequiredArgs  : TupleList                                                 { ETuple $1 (tuplePosition $1) }
               | lparen Variable rparen                                    { $2 }
-OptionalArgs  : TupleList                                                 { TupleExpr $1 (tuplePosition $1) }
+OptionalArgs  : TupleList                                                 { ETuple $1 (tuplePosition $1) }
               | lparen Variable rparen                                    { $2 }
               |                                                           { Empty }
 
@@ -77,12 +77,10 @@ EtypeHelper   : typename comma EtypeHelper                                { [$1]
               | typename                                                  { [$1] }
 Xtype         : Btype amp Etype                                           { Xtype $1 (map name $3) (bbypePosition $1) }
               | Btype                                                     { Xtype $1 [] (bbypePosition $1) }
-              | Etype                                                     { let pos = (tokPosition ($1 !! 1)) in Xtype ( Btype "Void" pos ) (map name $1) pos}
-Ttype         : lparen TtypeElement comma TtypeHelper rparen               { TtypeList ([$2] ++ $4) (tokPosition $1) }
-TtypeHelper   : TtypeElement comma TtypeHelper                            { [$1] ++ $3 }
-              | TtypeElement                                              { [$1] }
-TtypeElement  : Xtype                                                     { TtypeValue $1 (xtypePosition $1)}
-              | Ttype                                                     { $1 }
+              | Etype                                                     { Etype (map name $1) (tokPosition ($1 !! 1))}
+Ttype         : lparen Ptype comma TtypeHelper rparen                     { Ttype ([$2] ++ $4) (tokPosition $1) }
+TtypeHelper   : Ptype comma TtypeHelper                                   { [$1] ++ $3 }
+              | Ptype                                                     { [$1] }
 Ptype         : Ttype                                                     { Ttype' $1 (ttypePosition $1) }
               | Xtype                                                     { Xtype' $1 (xtypePosition $1) }
 Ftype         : Ptype arrow Ptype                                         { Ftype $1 $3 (ptypePosition $1) }
@@ -91,7 +89,7 @@ Type          : Ptype                                                     { Ptyp
                   
 Signature     : functionDef colon Type                                    { Signature (name $1) $3 (tokPosition $1) }
 Equation      : symbol OptionalArgs assign WeakStmt                       { Equation (name $1) $2 $4 (tokPosition $1) }
-ArrayEquation : symbol bang TupleList assign WeakStmt                     { ArrayEquation (name $1) (TupleExpr $3 (tuplePosition $3)) $5 (tokPosition $1) }
+ArrayEquation : symbol bang TupleList assign WeakStmt                     { ArrayEquation (name $1) (ETuple $3 (tuplePosition $3)) $5 (tokPosition $1) }
 ArrayEquations: ArrayEquation ArrayEquations                              { [$1] ++ $2 }
               | ArrayEquation                                             { [$1] }
 Equations     : Equation                                                  { [$1] }
@@ -122,7 +120,7 @@ Expr          : Variable                                                  { $1 }
               | Expr bang Expr                                            { Infix $1 (Bang $ tokPosition $2) $3 (exprPosition $1) }
                               
 Variable      : WeakVariable                                              { $1 }
-              | TupleList                                                 { TupleExpr $1 (tuplePosition $1)}
+              | TupleList                                                 { ETuple $1 (tuplePosition $1)}
                               
 WeakVariable  : int                                                       { EInt (int $1) (tokPosition $1)}
               | symbol                                                    { ESymbol (name $1) (tokPosition $1)}

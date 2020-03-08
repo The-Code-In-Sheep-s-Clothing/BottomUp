@@ -41,7 +41,7 @@ exists_in_dbl ((Base s1):xs) s2 (State fs ts) = if(s1 == s2)
 exists_in_dbl (x:xs) s2 st = exists_in_dbl xs s2 st  
 
 if_extract :: [[BaseType]] -> ([[BaseType]], [[BaseType]])
-if_extract ([(Endif)]:xs) = ([], xs)
+if_extract ([Endif]:xs) = ([], xs)
 if_extract (x:xs) = let (b1, b2) = if_extract xs
                         in ([x] ++ b1, b2)
 
@@ -60,11 +60,23 @@ dbl_comp (x1:xs1) xs2 st = if(exists_in_dbl xs2 (peel (bs_to_str x1) st) st)
                                         else False  
 
 
+tpl_extract :: [[BaseType]] -> ([[BaseType]], [[BaseType]])
+tpl_extract ([Endtpl]:xs) = ([], xs)
+tpl_extract (x:xs) = let (b1, b2) = tpl_extract xs
+                        in ([x] ++ b1, b2)
+
 tpl_comp :: [[BaseType]] -> [[BaseType]] -> State -> Bool
 tpl_comp ([Ifblk]:bs1) b2 st = let (bs11, bs12) = if_extract bs1
-                                        in (tpl_comp bs11 b2 st) && (tpl_comp bs12 b2 st)
+                                   in (tpl_comp bs11 b2 st) && (tpl_comp bs12 b2 st)
 tpl_comp b1 ([Ifblk]:bs2) st = let (bs21, bs22) = if_extract bs2
-                                        in (tpl_comp b1 bs21 st) && (tpl_comp b1 bs22 st)                                                        
+                                   in (tpl_comp b1 bs21 st) && (tpl_comp b1 bs22 st)
+tpl_comp ([Tplblk]:bs1) ([Tplblk]:bs2) st = let (bs11, bs12) = tpl_extract bs1
+                                                (bs21, bs22) = tpl_extract bs2
+                                                in (tpl_comp bs11 bs21 st) && (tpl_comp bs12 bs22 st)
+tpl_comp ([Tplblk]:bs1) (bs21:bs22) st = let (bs11, bs12) = tpl_extract bs1
+                                             in (tpl_comp bs11 [bs21] st) && (tpl_comp bs12 bs22 st)
+tpl_comp (bs11:bs12) ([Tplblk]:bs2) st = let (bs21, bs22) = tpl_extract bs2 
+                                             in (tpl_comp [bs11] bs21 st) && (tpl_comp bs12 bs22 st) 
 tpl_comp [d1] [d2] st = dbl_comp d1 d2 st
 tpl_comp (d1:ds1) [d2] st = False
 tpl_comp [d1] (d2:ds2) st = False
@@ -117,14 +129,18 @@ type_convert (Ptype' (Ttype' t _) _) = Tpl (ttype_convert t)
 type_convert (Ptype' (Xtype' (Xtype x [] _) _) _) = Sgl (btype_convert x) 
 type_convert (Ptype' (Xtype' x _) _) = Dbl (xtype_convert x) 
 
+ptype_convert :: Ptype -> [[BaseType]]
+ptype_convert (Ttype' t _) = ([[Tplblk]] ++ (ttype_convert t) ++ [[Endtpl]])
+ptype_convert (Xtype' (Xtype x [] _) _) = [[btype_convert x]] 
+ptype_convert (Xtype' x _) = [xtype_convert x]  
+
 ttype_convert :: Ttype -> [[BaseType]]
-ttype_convert (TtypeValue [] _) = []
-ttype_convert (TtypeValue ((Xtype x [] _):xs) p) = [[btype_convert x]] ++ (ttype_convert (TtypeValue xs p))
-ttype_convert (TtypeValue (x:xs) p) =  [xtype_convert x] ++ (ttype_convert (TtypeValue xs p))
+ttype_convert (Ttype t _) = (concat (map ptype_convert t))
 
 
 xtype_convert :: Xtype -> [BaseType]
 xtype_convert (Xtype b s _) = [btype_convert b] ++ (map Sls s)
+xtype_convert (Etype s _) = map Sls s
 
 btype_convert :: Btype -> BaseType
 btype_convert (Btype s _) = Base s
@@ -228,7 +244,7 @@ check_start x = let (state1, valid1, error1) = check_dup_name x (State [] [])
 
 check :: [Stmt] -> State -> (Bool, String)
 check [] _ = (True, "")
-check (x:xs) st = let (state1, valid1, error1) = check_stmt x st
+check (x:xs) st = let (state1, valid1, error1) = (check_stmt x st)
                       (valid2, error2) = check xs st
                         in (valid1 && valid2, error1 ++ error2)
 
@@ -275,17 +291,20 @@ tuple_concat _ (Sgl Em) = Sgl Em
 tuple_concat (Sgl b1) (Sgl b2) = Tpl [[b1], [b2]]
 tuple_concat (Sgl b1) (Dbl b2) = Tpl ([[b1]] ++ [b2])
 tuple_concat (Sgl b1) (Tpl b2) = Tpl ([[b1]] ++ b2) 
+tuple_concat (Dbl b1) (Sgl b2) = Tpl ([b1, [b2]])
 tuple_concat (Dbl b1) (Dbl b2) = Tpl ([b1] ++ [b2])
-tuple_concat (Dbl b1) (Tpl b2) = Tpl ([[Ifblk], b1, [Endif]] ++ b2)
-tuple_concat (Tpl b1) (Tpl b2) = Tpl ([[Ifblk]] ++ b1 ++ [[Endif]] ++ b2)
-tuple_concat t1 t2 = tuple_concat t2 t1
+tuple_concat (Dbl b1) (Tpl b2) = Tpl ([b1] ++ b2)
+tuple_concat (Tpl b1) (Sgl b2) = Tpl (b1 ++ [[b2]])
+tuple_concat (Tpl b1) (Dbl b2) = Tpl (b1 ++ [b2])
+tuple_concat (Tpl b1) (Tpl b2) = Tpl ([[Tplblk]] ++ b1 ++ [[Endtpl]] ++ b2)
 
-check_tuple :: [Expr] -> State -> (NewType, Bool, String)
-check_tuple [x] st    = let (type1, valid1, error1) = check_expr x st
-                            in (type1, valid1, error1)
-check_tuple (x:xs) st = let (type1, valid1, error1) = check_expr x st
-                            (type2, valid2, error2) = check_tuple xs st
-                            in (tuple_concat type1 type2, valid1 && valid2, error1 ++ error2)
+
+check_tuple :: Tuple -> State -> (NewType, Bool, String)
+check_tuple (TupleValue x _) st          = check_expr x st
+check_tuple (TupleList [x] _) st         = check_tuple x st
+check_tuple (TupleList (x:xs) pos) st    = let (type1, valid1, error1) = check_tuple x st
+                                               (type2, valid2, error2) = check_tuple (TupleList xs pos) st
+                                               in (tuple_concat type1 type2, valid1 && valid2, error1 ++ error2)
 
 check_symbol :: String -> [Def] -> (NewType, Bool, String)
 check_symbol s [x] =  check_symbol2 s x
@@ -309,7 +328,7 @@ check_function_app s1 e (State fs ts) = let d = lookup5 fs s1
                                                 in if(null d)
                                                         then (Sgl Em, False, "\ncall to undefined function " ++ s1)
                                                         else let (type1, valid1, error1) = check_expr e (State fs ts)
-                                                                 (Fdef s t2 t3) = head d
+                                                                 (Fdef s t2 t3) = (head d)
                                                                  in if(valid1)
                                                                         then if(type_comp type1 t2 (State fs ts))
                                                                                 then (t3, True, "")
@@ -321,7 +340,7 @@ check_function_app s1 e (State fs ts) = let d = lookup5 fs s1
 check_expr :: Expr -> State -> (NewType, Bool, String)
 check_expr (EInt _ _) st                          = (Sgl (Base "Int"), True, "")
 check_expr (Paren e _) st                         = check_expr e st
-check_expr (Tuple t _) st                         = check_tuple t st
+check_expr (ETuple t _) st                        = check_tuple t st
 check_expr (Infix e1 b e2 _) st                   = check_binop e1 b e2 st
 check_expr (FunctionApp s e _) (State fs ts)      = check_function_app s e (State fs ts)
 check_expr (ESymbol s _) (State fs ts)            = check_symbol s fs
@@ -378,9 +397,12 @@ check_stmt (Conditional e stmt1 stmt2 _) st = let (type1, valid1, error1) = (che
                                                   (type3, valid3, error3) = check_stmt stmt2 st
                                                   in if(type_comp type1 (Sgl (Base "Bool")) st)
                                                         then let type4 = condition_type_match type2 type3 st
-                                                                in if(null type4)
-                                                                        then (Sgl Em, False, "\nConditional statements do not return the same type " ++ (show type2) ++ " " ++ (show type3) ++ error1 ++ error2 ++ error3)
-                                                                        else (head type4, valid1 && valid2 && valid3, error1 ++ error2 ++ error3)
+                                                                in if(eparse type4)
+                                                                        then if(null type4)
+                                                                                then (Sgl Em, valid1 && valid2 && valid3, error1 ++ error2 ++ error3)
+                                                                                else (head type4, valid1 && valid2 && valid3, error1 ++ error2 ++ error3) 
+                                                                        else (Sgl Em, False, "\nConditional statements do not return the same type " ++ (show type2) ++ " " ++ (show type3) ++ error1 ++ error2 ++ error3)
+                                                                        
                                                                         
                                                         else (Sgl Em, False, "\nExpression " ++ (show e) ++ " is not of type Bool" ++ error1 ++ error2 ++ error3)
 check_stmt (Let s e stmt _) (State fs ts)           = let (type1, valid1, error1) = check_expr e (State fs ts)
@@ -395,20 +417,54 @@ check_stmt (While e1 e2 _) st          = let (type1, valid1, error1) = check_exp
 check_stmt (Valdef (Signature s t _) e _) (State fs ts)          = if(check_type_init_board e) 
                                                                         then let (type1, bcheck1, valid1, error1) = check_initial_board e (head (lookup5 ts "@@@@")) (form_board (head (lookup5 ts "&&&&"))) (not((length e) == 1)) (State fs ts)
                                                                                  in (type1, valid1, error1)
-                                                                        else check_func_call e (head (lookup5 fs s)) (State fs ts)
+                                                                        else trace ("\n" ++ s) (check_func_call e (head (lookup5 fs s)) (State fs ts))
 check_stmt (SExpr e _) st               = check_expr e st
 check_stmt _ _                          = (Sgl Em, True, "")
 
-tpl_arg_def :: String -> [Expr] -> [[BaseType]] -> State -> (State, Bool, String)
-tpl_arg_def s1 [(ESymbol s2 _)] [t] (State fs ts) = if(exists_in (fs ++ ts) s2)
-                                                        then (State fs ts, False, "\n variable name " ++ s2 ++ " is not valid in def of function " ++ s1)
-                                                        else (State ([Fdef s2 (Sgl Em) (if((length t) == 1) then (Sgl (head t)) else (Dbl t))] ++ fs) ts, True, "")
-tpl_arg_def s1 ((ESymbol s2 _):xs) (t:t2) (State fs ts) = let ((State fs1 ts1), valid1, error1) = tpl_arg_def s1 xs t2 (State fs ts)
-                                                                in if(exists_in (fs1 ++ ts1) s2)
-                                                                        then (State fs1 ts1, False, "\n variable name " ++ s2 ++ " is not valid in def of function " ++ s1)
-                                                                        else (State ([Fdef s2 (Sgl Em) (if((length t) == 1) then (Sgl (head t)) else (Dbl t))] ++ fs1) ts1, True, "") 
-                                                        
+tpl_len :: [[BaseType]] -> Int
+tpl_len ([Tplblk]:xs) = 1 + tpl_len (snd (tpl_extract xs))
+tpl_len (x:xs) = 1 + (tpl_len xs)
 
+tpl_len_comp2 :: [Tuple] -> [[BaseType]] -> State -> (State, Bool, String)
+tpl_len_comp2 [] [] st = (st, True, "")
+tpl_len_comp2 [] x st = (st, False, "")
+tpl_len_comp2 x [] st = (st, False, "")
+tpl_len_comp2 (x:xs) ([Tplblk]:t) st = let (t11, t12) = tpl_extract t
+                                           (state1, valid1, error1) = tpl_len_comp x t11 st
+                                           in if(valid1) 
+                                                   then tpl_len_comp2 xs t12 state1
+                                                   else (st, False, error1)
+tpl_len_comp2 (x:xs) (t:ts) st = let (state1, valid1, error1) = tpl_len_comp x [t] st 
+                                     in if(valid1)
+                                                then tpl_len_comp2 xs ts state1
+                                                else (st, False, error1) 
+
+tpl_len_comp :: Tuple -> [[BaseType]] -> State -> (State, Bool, String)
+tpl_len_comp (TupleValue (ESymbol s _) _) [[t]] (State fs ts) = if(exists_in (fs ++ ts) s)
+                                                                        then (State fs ts, False, "\nSymbol name " ++ s ++ " has already used in this scope")
+                                                                        else (State ([Fdef s (Sgl Em) (Sgl t)] ++ fs) ts, True, "")
+tpl_len_comp (TupleValue (ESymbol s _) _) [t] (State fs ts) = if(exists_in (fs ++ ts) s)
+                                                                        then (State fs ts, False, "\nSymbol name " ++ s ++ " has already used in this scope")
+                                                                        else (State ([Fdef s (Sgl Em) (Dbl t)] ++ fs) ts, True, "")
+tpl_len_comp (TupleValue (ESymbol s _) _) t (State fs ts) = if(exists_in (fs ++ ts) s)
+                                                                        then (State fs ts, False, "\nSymbol name " ++ s ++ " has already used in this scope")
+                                                                        else if((tpl_len t) == 1) 
+                                                                                then (State ([Fdef s (Sgl Em) (Tpl t)] ++ fs) ts, True, "")
+                                                                                else (State fs ts, False, "")
+tpl_len_comp (TupleList (x:xs) _) ([Tplblk]:t) st = let (t11, t12) = tpl_extract t
+                                                        in let (state1, valid1, error1) = tpl_len_comp x t11 st
+                                                               in if(valid1) 
+                                                                       then tpl_len_comp2 xs t12 state1
+                                                                       else (st, False, error1) 
+tpl_len_comp (TupleList x _) [[Base s]] (State fs ts) = let (Tdef _ t2) = head (lookup5 (fs ++ ts) (peel s (State fs ts)))
+                                                            in case t2 of
+                                                                    (Tpl t) -> tpl_len_comp2 x t (State fs ts)
+                                                                    _       -> (State fs ts, False, "")
+tpl_len_comp (TupleList (x:xs) _) (t:ts) st = let (state1, valid1, error1) = tpl_len_comp x [t] st
+                                                  in if(valid1)
+                                                          then tpl_len_comp2 xs ts state1
+                                                          else (st, False, error1)
+tpl_len_comp _ [] st = (st, False, "")                                                                         
 
 check_args :: Expr -> Def -> State -> (State, Bool, String)
 check_args Empty (Fdef s (Sgl Em) t) st = (st, True, "")
@@ -417,17 +473,23 @@ check_args _ (Fdef s (Sgl Em) t) st= (st, False, "\nArguments given in left side
 check_args (ESymbol s2 _) (Fdef s1 t1 t2) (State fs ts) = if(exists_in (fs ++ ts) s2)
                                                                 then (State fs ts, False, "\n variable name " ++ s2 ++ " is not valid in def of function " ++ s1)
                                                                 else (State ([Fdef s2 (Sgl Em) t1] ++ fs) ts, True, "")
-check_args (Tuple e _) (Fdef s1 (Sgl (Base s2)) t1) (State fs ts) =  let (Tdef _ t2) = head (lookup5 (fs ++ ts) (peel s2 (State fs ts)))
+check_args (ETuple e _) (Fdef s1 (Sgl (Base s2)) t1) (State fs ts) =  let (Tdef _ t2) = head (lookup5 (fs ++ ts) (peel s2 (State fs ts)))
                                                                                 in case t2 of
-                                                                                        (Tpl tp) -> if((length e) == (length tp))
-                                                                                                        then tpl_arg_def s1 e tp (State fs ts)
-                                                                                                        else (State fs ts, False, "\nnumber of arguments in def of function " ++ s1 ++ " do not match")
+                                                                                        (Tpl tp) -> let (state1, valid1, error1) = tpl_len_comp e tp (State fs ts)
+                                                                                                        in if(valid1)
+                                                                                                                then (state1, True, "")
+                                                                                                                else if(null error1)
+                                                                                                                        then ((State fs ts), False, "\nnumber of arguments in def of function " ++ s1 ++ " do not match")
+                                                                                                                        else ((State fs ts), False, error1)
                                                                                         _ -> (State fs ts, False, "\nToo many argument given in left side of equation in def of function " ++ s1)
                                                                                         
-check_args (Tuple e _) (Fdef s1 (Dbl d) t2) (State fs ts ) = (State fs ts, False, "\nnumber of arguments in def of function " ++ s1 ++ " do not match")
-check_args (Tuple e _) (Fdef s1 (Tpl t1) t2) (State fs ts) =  if((length e) == (length t1))
-                                                                then tpl_arg_def s1 e t1 (State fs ts)
-                                                                else (State fs ts, False, "\nnumber of arguments in def of function " ++ s1 ++ " do not match")
+check_args (ETuple e _) (Fdef s1 (Dbl d) t2) (State fs ts ) = (State fs ts, False, "\nnumber of arguments in def of function " ++ s1 ++ " do not match")
+check_args (ETuple e _) (Fdef s1 (Tpl t1) t2) (State fs ts) =  let (state1, valid1, error1) = (tpl_len_comp e t1 (State fs ts))
+                                                                   in if(valid1)
+                                                                        then (state1, True, "")
+                                                                        else if(null error1)
+                                                                                then ((State fs ts), False, "\nnumber of arguments in def of function " ++ s1 ++ " do not match")
+                                                                                else ((State fs ts), False, error1)
 
 add_col :: Int -> [Bool]
 add_col 0 = []
@@ -453,16 +515,16 @@ init_board_update (x:xs) r c ind = if(r == 0 || r == ind)
                                         else [x] ++ (init_board_update xs r c (ind + 1))
 
 check_initial_board_tpl :: Expr -> [[Bool]] -> ([[Bool]], Bool)
-check_initial_board_tpl (Tuple [ESymbol s1 _, ESymbol s2 _] _) b = if((s1 == "x") && (s2 == "y"))
-                                                                        then (init_board_update b 0 0 1, True)
-                                                                        else ([], False)
-check_initial_board_tpl (Tuple [ESymbol s _, EInt v1 _] _) b = if(s == "x")
-                                                                        then (init_board_update b 0 v1 1, True)
-                                                                        else ([], False)
-check_initial_board_tpl (Tuple [EInt v1 _, ESymbol s _] _) b = if(s == "y")
+check_initial_board_tpl (ETuple (TupleList [TupleValue (ESymbol s1 _) _, TupleValue (ESymbol s2 _) _] _) _) b = if((s1 == "x") && (s2 == "y"))
+                                                                                                                        then (init_board_update b 0 0 1, True)
+                                                                                                                        else ([], False)
+check_initial_board_tpl (ETuple (TupleList [TupleValue (ESymbol s _) _, TupleValue (EInt v1 _) _] _) _) b = if(s == "x")
+                                                                                                                then (init_board_update b 0 v1 1, True)
+                                                                                                                else ([], False)
+check_initial_board_tpl (ETuple (TupleList [TupleValue (EInt v1 _) _, TupleValue (ESymbol s _) _] _) _) b = if(s == "y")
                                                                         then (init_board_update b v1 0 1, True)
                                                                         else ([], False)
-check_initial_board_tpl (Tuple [EInt v1 _, EInt v2 _] _) b = (init_board_update b v1 v2 1, True)
+check_initial_board_tpl (ETuple (TupleList [TupleValue (EInt v1 _) _, TupleValue (EInt v2 _) _] _) _) b = (init_board_update b v1 v2 1, True)
 check_initial_board_tpl _ _ = ([], False)
 
 check_initial_board :: [Equation] -> Def -> [[Bool]] -> Bool -> State -> (NewType, [[Bool]], Bool, String)
@@ -531,6 +593,10 @@ full_type_to_str fstr (Sgl (Base s)) (State fs ts) = if(exists_in_sls fs s)
                                                                 else (State fs ts, (Sgl Em), False, "\nType " ++ s ++ " in function " ++ fstr ++ " is undefined")
 full_type_to_str fstr (Dbl x) st = let (state1, type1, valid1, error1) = full_type_to_str_x_pre fstr x st 
                                         in (state1, Dbl type1, valid1, error1)
+full_type_to_str fstr (Tpl ([Tplblk]:xs)) st = let (t1, t2) = tpl_extract xs
+                                                   in let(state1, (Tpl x1), valid1, error1) = full_type_to_str fstr (Tpl t1) st
+                                                         in let (state2, (Tpl x2), valid2, error2) = full_type_to_str fstr (Tpl t2) st
+                                                                in (state2, Tpl ([[Tplblk]] ++ x1 ++ [[Endtpl]] ++ x2), valid1 && valid2, error1 ++ error2)
 full_type_to_str fstr (Tpl (x:xs)) st = let (state1, type1, valid1, error1) = full_type_to_str_x_pre fstr x st
                                               in let (state2, (Tpl x2), valid2, error2) = full_type_to_str fstr (Tpl xs) st
                                                      in (state2, Tpl ([type1] ++ x2), valid1 && valid2, error1 ++ error2)
@@ -651,11 +717,12 @@ check_dup_name_stmt (Typedef s t _) (State fs ts)  =  if(lookup_start (fs ++ ts)
 check_dup_name_stmt (Valdef (Signature s t _) e _) (State fs ts) = if(lookup_start (fs ++ ts) s)
                                                                 then (State fs ts, False, "\nFunction name " ++ s ++ " already used")
                                                                 else if(check_equation_name s e)
-                                                                        then (State ([ftype_convert s t] ++ fs) ts, True, "")
+                                                                        then let d = ftype_convert s t
+                                                                                in (State ([d] ++ fs) ts, True, "")
                                                                         else (State fs ts, False, "\nFunction " ++ s ++ " has inconsistent naming" )                                                                
 check_dup_name_stmt (TypedefFunc s (FunctionApp _ e _) t _) (State fs ts)  = if(not (s == "Board"))
                                                                 then ((State fs ts), False, "\nof type not allowed for non board definitions")
                                                                 else case e of 
-                                                                        (Tuple [EInt v1 _, EInt v2 _] _) -> (State fs ([Tdef "@@@@" (type_convert t), Tdef "&&&&" (Dbl [Base (show v1), Base (show v2)])] ++ ts), True, "")
+                                                                        (ETuple (TupleList [TupleValue (EInt v1 _) _, TupleValue (EInt v2 _) _] _) _) -> (State fs ([Tdef "@@@@" (type_convert t), Tdef "&&&&" (Dbl [Base (show v1), Base (show v2)])] ++ ts), True, "")
                                                                         _ -> (State fs ts, False, "\nboard size must be defined by (int, int) " ++ (show e))
 check_dup_name_stmt _ st = (st, True, "")

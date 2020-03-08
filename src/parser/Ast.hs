@@ -85,7 +85,7 @@ data Expr           = EInt              {   value           :: Int
                     | Paren             {   parenExpr       :: Expr
                                         ,   exprPosition    :: AlexPosn
                                         }
-                    | TupleExpr         {   values          :: Tuple
+                    | ETuple            {   values          :: Tuple
                                         ,   exprPosition    :: AlexPosn
                                         }
                     | FunctionApp       {   functionName    :: String
@@ -108,13 +108,13 @@ data Btype          = Btype             {   typeName        :: String
 data Xtype          = Xtype             {   btype           :: Btype
                                         ,   extensions      :: [String]
                                         ,   xtypePosition   :: AlexPosn
+                                        }
+                    | Etype             {   extensions      :: [String]
+                                        ,   xtypePosition   :: AlexPosn
                                         }   
                     deriving Show
 
-data Ttype          = TtypeValue        {   tupleval       :: Xtype
-                                        ,   ttypePosition   :: AlexPosn
-                                        }
-                    | TtypeList         {   tupleelements   :: [Ttype]
+data Ttype          = Ttype             {   tupleelements   :: [Ptype]
                                         ,   ttypePosition   :: AlexPosn
                                         }   
                     deriving Show

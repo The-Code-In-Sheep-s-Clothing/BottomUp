@@ -102,6 +102,7 @@ compile_valdef (Valdef (Signature s t _) e _) =
 -- Function defintion equations
 compile_equation :: String -> Equation -> StateRet
 compile_equation f (Equation s e st _) = (s ++ " " ++ compile_expr e ++ "=") ++> compile_stmt f st
+compile_equation f (ArrayEquation s e st _) = (s ++ " " ++ compile_expr e ++ "=") ++> compile_stmt f st -- this probably does not work as intneded
 
 -- Type/data declarations (bo/equationard, input)
 compile_typedef :: Stmt -> StateRet
@@ -121,7 +122,7 @@ compile_input_funcs t = let x = (intercalate "," (["Int" | x <- [1..count_tuple_
 count_tuple_type :: Type -> Int
 count_tuple_type (Ptype' (Xtype' (Xtype (Btype "Position" _) [] _) _) _) = 2
 count_tuple_type (Ptype' (Xtype' (Xtype b [] _) _) _) = 1
-count_tuple_type (Ptype' (Ttype' (Ttype t _) _) _) = length t
+count_tuple_type (Ptype' (Ttype' (Ttype t _) _) _) = length t --this doesnt really work for nested tuples
 
 compile_type :: Type -> StateRet
 compile_type (Ptype' p _) = compile_ptype p
@@ -159,12 +160,18 @@ add_content_to_state (Ptype' (Xtype' (Xtype b l _) _) _) = do
 -- TODO: Should this be possible?
 add_content_to_state _ = return "Not Possible"
 
+
+
 compile_ttype :: Ttype -> StateRet
-compile_ttype (Ttype x _) = "(" ++> (intercalateM "," (map compile_xtype x)) <++ ")"
+compile_ttype (Ttype x _) = "(" ++> (intercalateM "," (map compile_ptype x)) <++ ")"
 
 compile_btype :: Btype -> String
 -- compile_btype (Btype "Board") = "Board Content"
 compile_btype (Btype b _) = b
+
+compile_tuple :: Tuple -> String
+compile_tuple (TupleList t _) = "(" ++ intercalate "," (map compile_tuple t) ++ ")"
+compile_tuple (TupleValue t _) = compile_expr t
 
 compile_expr :: Expr -> String
 compile_expr (EInt i _) = show i
@@ -172,11 +179,11 @@ compile_expr (ESymbol s _)
     | s == "initialBoard" = "initialBoard board_size" 
     | otherwise = s
 compile_expr (Paren e _) = "(" ++ compile_expr e ++ ")"
-compile_expr (Tuple t _) = "(" ++ intercalate "," (map compile_expr t) ++ ")"
+compile_expr (ETuple t _) = compile_tuple t
 -- Need to check if it's a built in function with a different signature (or,and,...)
-compile_expr (FunctionApp s t@(Tuple e _) _) 
+compile_expr (FunctionApp s t@(ETuple e@(TupleList l _) _) _) 
     | s == "or" || s == "and" = "(" ++ s ++ " [" ++ 
-    intercalate "," (map compile_expr e) ++ "])"
+    intercalate "," (map compile_tuple l) ++ "])" -- this probably doesnt work the way you want it to
     | otherwise = "(" ++ s ++ " " ++ compile_expr t ++ ")"
 compile_expr (FunctionApp s e _)
     | s == "or" || s == "and" = "(" ++ s ++ " [" ++ 
@@ -201,6 +208,7 @@ compile_binop (LessThan _ ) = "<"
 compile_binop (GreaterThan _ ) = ">"
 compile_binop (LessThanEqual _ ) = "<="
 compile_binop (GreaterThanEqual _ ) = ">="
+compile_binop (Bang _) = "!"
 
 get_return_type :: Type -> String
 get_return_type (Ptype' p _) = evalState (compile_ptype p) []

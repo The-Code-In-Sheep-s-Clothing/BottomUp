@@ -14,7 +14,7 @@ loop : (Board,Player) -> (Board,Player)
 loop(b,p) = while not(gameOver(b,p)) do tryMove(b,p)
 
 -- Game over function !
-gameOver : (Board,Player) -> Bool
+gameOver : (Board,Player) -> Bool 
 gameOver(b,p) = or(threeInARow(b),isFull(b))
 
 isValid : (Board,Position) -> Bool

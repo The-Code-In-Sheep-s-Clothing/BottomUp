@@ -164,9 +164,10 @@ prettyParseSymbol "symbol"      = "symbol (Type or variable name)"
 prettyParseSymbol "functionDef" = "Function Definition"
 prettyParseSymbol "comment"     = "Comment"
 prettyParseSymbol "bang"        = "!"
-prettyParseSymbol "{"           = "{"
-prettyParseSymbol "}"           = "}"
-prettyParseSymbol "&"           = "&"
+prettyParseSymbol "lcurly"      = "{"
+prettyParseSymbol "rcurly"      = "}"
+prettyParseSymbol "amp"         = "&"
+prettyParseSymbol str           = str
 
 formatExpected   :: [String] -> String
 formatExpected e = intercalate "," $ map prettyParseSymbol e

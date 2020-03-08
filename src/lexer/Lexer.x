@@ -57,11 +57,12 @@ tokens :-
 data AlexUserState = AlexUserState
                    {
                       readInput :: String,
-                      nextToken :: Token
+                      nextToken :: Token,
+                      prevState :: (AlexPosn, String, String)
                    }
 
 alexInitUserState :: AlexUserState
-alexInitUserState  = AlexUserState { readInput = "", nextToken = TokenSOF }
+alexInitUserState  = AlexUserState { readInput = "", nextToken = TokenSOF, prevState = ((AlexPn 0 0 0), "", "") }
 
 getLexerReadInputValue :: Alex String
 getLexerReadInputValue  = Alex $ \s@AlexState{alex_ust=ust} -> Right (s, readInput ust)
@@ -74,6 +75,12 @@ getNextToken = Alex $ \s@AlexState{alex_ust=ust} -> Right (s, nextToken ust)
 
 setNextToken :: Token -> Alex ()
 setNextToken ss = Alex $ \s -> Right (s{alex_ust=(alex_ust s){nextToken=ss}}, ())
+
+getPrevState :: Alex (AlexPosn, String, String)
+getPrevState = Alex $ \s@AlexState{alex_ust=ust} -> Right (s, prevState ust)
+
+setPrevState :: (AlexPosn, String, String) -> Alex ()
+setPrevState ss = Alex $ \s -> Right (s{alex_ust=(alex_ust s){prevState=ss}}, ())
 
 
 -- there might be a library for this, but I dont know how to include
@@ -258,8 +265,7 @@ showPosn (AlexPn _ line col) = "Error on line: " ++ show line ++ " column: " ++ 
 
 printError :: String -> Alex a
 printError s = do
-  ((AlexPn a line col),_, _, rem_in) <- alexGetInput
-  read_in <- getLexerReadInputValue
+  ((AlexPn a line col), rem_in, read_in) <- getPrevState
   alexError $ "\n" ++ s ++ showPosn (AlexPn a line col) ++ splitOn "\n" (read_in ++ rem_in) !! (line - 1) ++ "\n" ++ (replicate (col - 2) ' ') ++ "^"
 
 lexNextToken :: Alex Token
@@ -267,13 +273,19 @@ lexNextToken = do
   next <- alexMonadScan
   setNextToken next
   case next of
-    
     TokenError posn text -> printError $ "unexpected character " ++ text ++ "\n"
     TokenWhite _ _ -> lexNextToken
     _ -> getNextToken
 
+updatePrevState :: (Token -> Alex a) -> Token -> (AlexPosn, String, String) -> Alex a
+updatePrevState cont token state = do
+  setPrevState state
+  cont token
+
 lexwrap :: (Token -> Alex a) -> Alex a
 lexwrap cont = do
+    (pos,_, _, rem_in) <- alexGetInput
+    read_in <- getLexerReadInputValue
     token <- getNextToken
     next <- lexNextToken
     case token of
@@ -281,8 +293,8 @@ lexwrap cont = do
       TokenSOF -> lexwrap cont
       -- fix special case for function starts
       TokenSym posn name -> case next of 
-        TokenColon _ -> cont $ TokenFunctionDef posn name
-        _ -> cont $ TokenSym posn name
-      _ -> cont token
+        TokenColon _ -> updatePrevState cont (TokenFunctionDef posn name) (pos, rem_in, read_in)
+        _ -> updatePrevState cont (TokenSym posn name) (pos, rem_in, read_in)
+      _ -> updatePrevState cont token (pos, rem_in, read_in)
 
 }

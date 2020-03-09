@@ -15,7 +15,7 @@
         {
             "label": "Run",
             "type": "shell",
-            "command": "cabal new-exec BottomUp < ./test/testing.bgl",
+            "command": "cabal new-exec BottomUp ./test/testing.bgl",
             "options": {
                 "cwd": "${workspaceFolder}"
             },

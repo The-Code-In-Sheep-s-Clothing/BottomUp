@@ -77,7 +77,7 @@ EtypeHelper   : typename comma EtypeHelper                                { [$1]
               | typename                                                  { [$1] }
 Xtype         : Btype amp Etype                                           { Xtype $1 (map name $3) (bbypePosition $1) }
               | Btype                                                     { Xtype $1 [] (bbypePosition $1) }
-              | Etype                                                     { Etype (map name $1) (tokPosition ($1 !! 1))}
+              | Etype                                                     { Etype (map name $1) (tokPosition ($1 !! 0))}
 Ttype         : lparen Ptype comma TtypeHelper rparen                     { Ttype ([$2] ++ $4) (tokPosition $1) }
 TtypeHelper   : Ptype comma TtypeHelper                                   { [$1] ++ $3 }
               | Ptype                                                     { [$1] }

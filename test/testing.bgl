@@ -6,6 +6,7 @@ type Big = Player & {C, D}
 
 initialBoard : Board
 initialBoard ! (x, y) = Empty
+initialBoard ! (1, 2) = Empty
 
 goFirst : Player
 goFirst = A

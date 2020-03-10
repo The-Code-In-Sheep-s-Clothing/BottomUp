@@ -6,6 +6,7 @@ Lexer.hs
 Main
 OutputCode.hs
 OutputBuiltins.hs
+output.hs
 dist
 dist/*
 dist-newstyle

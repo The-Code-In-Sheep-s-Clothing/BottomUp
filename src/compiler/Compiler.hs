@@ -110,7 +110,16 @@ compile_typedef (TypedefFunc "Board" e t _) =
     add_content_to_state t <++ 
     ("board_size = " ++ compile_expr e)
 compile_typedef (Typedef "Input" t _) = "type Input = " ++> compile_type t <++ "\n"
-compile_typedef (Typedef s t _) = ("type " ++ s ++ " = ") ++> compile_type t
+compile_typedef (Typedef s (Ptype' (Ttype' t _) _) _) = 
+    ("type " ++ s ++ " = ") ++> compile_ttype t
+compile_typedef (Typedef s (Ptype' (Xtype' (Xtype b [] _) _) _) _) = 
+    return (("type " ++ s ++ " = ") ++ compile_btype b)
+compile_typedef (Typedef s (Ptype' (Xtype' (Etype l ep) _) _) _) = 
+    ("data " ++ s ++ " = ") ++> (compile_xtype (Etype l ep))
+compile_typedef (Typedef s (Ptype' (Xtype' x@(Xtype b l _) _) _) _) = 
+    compile_xtype x >> return ""
+-- This is impossible, all possible cases are captured above
+compile_typedef _ = return ""
 
 -- Compiles in the input functions, replacing the types with the correct tuple
 compile_input_funcs :: Type -> String
@@ -146,6 +155,7 @@ compile_xtype (Xtype b l _) = do
         return t
     else do
         return t
+compile_xtype (Etype l _) = return (intercalate "|" l)
 
 add_content_to_state :: Type -> StateRet
 add_content_to_state (Ptype' (Xtype' (Xtype b l _) _) _) = do

@@ -21,7 +21,7 @@ gameOver : (Board,Player) -> Bool
 gameOver(b,p) = or(threeInARow(b),isFull(b))
 
 isValid : (Board,Position) -> Bool
-isValid(b,p) = if b ! p == Empty then True else False
+isValid(b,p) = if (b ! p) == Empty then True else False
 
 outcome : (Board,Player) -> Player & { Tie }
 outcome(b,p) = if inARow(3,A,b) then A else
@@ -39,5 +39,3 @@ play(a,b) = outcome(loop(a,b))
 result : Player & { Tie }
 result = play(initialBoard,goFirst)
 
-test : (A, Int) -> Int
-test(a,b) = b

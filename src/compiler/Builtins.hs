@@ -88,11 +88,29 @@ builtin_funcs = [
     \   i <- getLine\n\
     \   return $ read i",
 
+    "modifyElement :: (Int, Int) -> Content -> Board -> Board\n\
+     \modifyElement (x, y) c b = b // [((x,y), c)]",
+
+    "modifyRow :: Int -> Content -> Board -> Board\n\
+     \modifyRow x c b= modifyRowHelper b (x, 1) (numRows (bounds b)) c",
+
+    "modifyRowHelper :: Board -> (Int, Int) -> Int -> Content -> Board\n\
+    \modifyRowHelper b (x, y) max c = if (y <= max) then modifyElement (x, y) c (modifyRowHelper b (x, y+1) max c) else b",
+
+    "modifyCol :: Int -> Content -> Board -> Board\n\
+    \modifyCol y c b= modifyColHelper b (1, y) (numCols (bounds b)) c",
+
+    "modifyColHelper :: Board -> (Int, Int) -> Int -> Content -> Board\n\
+    \modifyColHelper b (x, y) max c = if (x <= max) then modifyElement (x, y) c (modifyColHelper b (x+1, y) max c) else b",
+
     "numRows :: ((Int, Int), (Int, Int)) -> Int\n\
-    \numRows ((a, b), (c, d)) = c",
+    \numRows ((a, b), (c, d)) = d",
 
     "numCols :: ((Int, Int), (Int, Int)) -> Int\n\
-    \numCols ((a, b), (c, d)) = d",
+    \numCols ((a, b), (c, d)) = c",
+
+    "gridSize :: Grid -> (Int, Int)\n\
+    \gridSize (Array (x, y)) = (x, y)",
 
     "byRows :: [[Content]] -> Board\n\
     \byRows rows = listArray ((1,1),size) (concat (reverse rows))\n\

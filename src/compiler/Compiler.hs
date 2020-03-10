@@ -7,6 +7,7 @@ import Control.Monad.State
 import Data.Strings
 import Ast
 import Builtins
+import Data.Array
 
 -- List of type names and their extended type symbols
 type Env = [(String, String, [String])]
@@ -37,7 +38,7 @@ compile_builtin_funcs st = "-- Builtin functions\n" ++ (intercalate "\n\n" built
 
 -- Compilation code from AST
 compile :: [Stmt] -> String
-compile x = "import OutputBuiltins\n" ++ let (res, st) = runState (compile_stmts x) [] in res
+compile x = "import OutputBuiltins\nimport Data.Array\n" ++ let (res, st) = runState (compile_stmts x) [] in res
 
 compile_prelude :: [Stmt] -> String
 compile_prelude x = let (res, st) = runState (compile_stmts x) [] in res
@@ -93,11 +94,25 @@ while_compose _ = ""
 -- Function type definition
 -- TODO accept different types of arguments for initialBoard
 compile_valdef :: Stmt -> StateRet
-compile_valdef (Valdef (Signature "initialBoard" t _) ((Equation s e st _):es) _) =
-    (((s ++ " :: Grid -> ") ++> compile_type t ) <++ ("\n" ++
-    "initialBoard (Array (x,y)) = board (x, y)")) <++> (compile_stmt "" st)
+compile_valdef (Valdef (Signature name t _) ((ArrayEquation s e st _):es) _) =
+    ((name ++ " :: " ) ++> compile_type t ) <++ ("\n" ++
+    s ++ " =") <++> (compile_boardequ es) <++ "board (gridSize board_size) " <++> (compile_stmt "" st) <++ (parenList es)
+
 compile_valdef (Valdef (Signature s t _) e _) = 
     (s ++ " :: ") ++> compile_type t <++ "\n" <++> (intercalateM "\n" (map (compile_equation (get_return_type t)) e))
+
+compile_boardequ :: [Equation] -> StateRet
+compile_boardequ [] = return ""
+compile_boardequ ((ArrayEquation s (ETuple (TupleList ((TupleValue (ESymbol _ _) _):(TupleValue (EInt y _) _):xs) _) _) st _):es) =
+         (compile_boardequ es) <++ ("modifyCol " ++ show(y) ++ " ") <++> (compile_stmt "" st) <++ " ("
+compile_boardequ ((ArrayEquation s (ETuple (TupleList ((TupleValue (EInt x _) _):(TupleValue (ESymbol _ _) _):xs) _) _) st _):es) =
+         (compile_boardequ es) <++ ("modifyRow " ++ show(x) ++ " ") <++> (compile_stmt "" st) <++ " ("
+compile_boardequ ((ArrayEquation s (ETuple (TupleList ((TupleValue (EInt x _) _):(TupleValue (EInt y _) _):xs) _) _) st _):es) =
+         (compile_boardequ es) <++ ("modifyElement (" ++ show(x) ++ ", " ++ show(y) ++ ") ") <++> (compile_stmt "" st) <++ " ("
+
+parenList :: [Equation] -> String
+parenList [] = ""
+parenList (x:xs) = ")" ++ parenList xs
 
 -- Function defintion equations
 compile_equation :: String -> Equation -> StateRet
@@ -185,9 +200,7 @@ compile_tuple (TupleValue t _) = compile_expr t
 
 compile_expr :: Expr -> String
 compile_expr (EInt i _) = show i
-compile_expr (ESymbol s _) 
-    | s == "initialBoard" = "initialBoard board_size" 
-    | otherwise = s
+compile_expr (ESymbol s _) = s
 compile_expr (Paren e _) = "(" ++ compile_expr e ++ ")"
 compile_expr (ETuple t _) = compile_tuple t
 -- Need to check if it's a built in function with a different signature (or,and,...)

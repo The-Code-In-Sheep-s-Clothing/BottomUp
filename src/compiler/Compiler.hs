@@ -37,7 +37,8 @@ compile_builtin_funcs st = "-- Builtin functions\n" ++ (intercalate "\n\n" built
 
 -- Compilation code from AST
 compile :: [Stmt] -> String
-compile x = "import OutputBuiltins\n" ++ let (res, st) = runState (compile_stmts x) [] in res
+compile x = "import OutputBuiltins\n" ++ let (res, st) = runState (compile_stmts x) [] in 
+    compile_state st ++ "\n" ++ res
 
 compile_prelude :: [Stmt] -> String
 compile_prelude x = let (res, st) = runState (compile_stmts x) [] in res
@@ -45,7 +46,7 @@ compile_prelude x = let (res, st) = runState (compile_stmts x) [] in res
 compile_builtin :: [Stmt] -> String
 compile_builtin x = "module OutputBuiltins where\n" ++ compile_imports ++ compile_builtin_types ++
     let (res, st) = runState (compile_stmts x) [] in
-        compile_state st ++ "\n" ++
+        compile_content_state st ++ "\n" ++
         compile_builtin_funcs st ++ "\n\n" ++
         find_compile_input_funcs x
 
@@ -55,9 +56,19 @@ find_compile_input_funcs ((Typedef "Input" t _):xs) = compile_input_funcs t
 find_compile_input_funcs (x:xs) = find_compile_input_funcs xs
 
 compile_state :: Env -> String
-compile_state e = "-- User defined types\n" ++ intercalate "\n" (map compile_single_state e) ++ "\n"
+compile_state e = intercalate "\n" (map compile_single_state e) ++ "\n"
+
+compile_content_state :: Env -> String
+compile_content_state ((s,c,l):es) = if (s == "Content") then
+    "data " ++ s ++ " = " ++ s ++ "Con " ++ 
+    c ++ "|" ++ intercalate " | " l ++
+    " deriving (Show, Eq)"
+    else
+        compile_content_state es
+
 
 compile_single_state :: (String, String, [String]) -> String
+compile_single_state ("Content", c, l) = ""
 compile_single_state (s, c, l) = "data " ++ s ++ " = " ++ s ++ "Con " ++ 
     c ++ "|" ++ intercalate " | " l ++
     " deriving (Show, Eq)"
@@ -117,7 +128,7 @@ compile_typedef (Typedef s (Ptype' (Xtype' (Xtype b [] _) _) _) _) =
 compile_typedef (Typedef s (Ptype' (Xtype' (Etype l ep) _) _) _) = 
     ("data " ++ s ++ " = ") ++> (compile_xtype (Etype l ep))
 compile_typedef (Typedef s (Ptype' (Xtype' x@(Xtype b l _) _) _) _) = 
-    compile_xtype x >> return ""
+    compile_xtype_named x s >> return ""
 -- This is impossible, all possible cases are captured above
 compile_typedef _ = return ""
 
@@ -156,6 +167,19 @@ compile_xtype (Xtype b l _) = do
     else do
         return t
 compile_xtype (Etype l _) = return (intercalate "|" l)
+
+compile_xtype_named :: Xtype -> String -> StateRet
+compile_xtype_named (Xtype b [] _) s = return (compile_btype b)
+compile_xtype_named (Xtype b l _) s= do
+    cur_state <- get
+    let type_list = [compile_btype b] ++ l
+    let t = intercalate "_" type_list
+    if not (elem t (map (\(a,_,_) -> a) cur_state)) then do
+        put (cur_state ++ [(s, compile_btype b, drop 1 type_list)])
+        return t
+    else do
+        return t
+compile_xtype_named (Etype l _) s = return (intercalate "|" l)
 
 add_content_to_state :: Type -> StateRet
 add_content_to_state (Ptype' (Xtype' (Xtype b l _) _) _) = do

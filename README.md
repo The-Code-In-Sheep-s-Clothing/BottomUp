@@ -8,7 +8,11 @@
 * cabal v2-build
 
 ## Generic Execute
-* cabal new-exec BottomUp filename
+* cabal new-exec BottomUp <filename>
+* ghci OutputCode.hs
+
+## Windows Executable Execute
+* ./BoGL-Compiler.exe <filename>
 * ghci OutputCode.hs
 
 ## Linux Install

@@ -415,8 +415,9 @@ check_stmt (While e1 e2 _) st          = let (type1, valid1, error1) = check_exp
                                             then (type2, valid1 && valid2, error1 ++ error2)
                                             else (Sgl Em, False, "\nExpression " ++ (show e1) ++ " is not of type Bool" ++ error1 ++ error2)
 check_stmt (Valdef (Signature s t _) e _) (State fs ts)          = if(check_type_init_board e) 
-                                                                        then let (type1, bcheck1, valid1, error1) = check_initial_board e (head (lookup5 ts "@@@@")) (form_board (head (lookup5 ts "&&&&"))) (not((length e) == 1)) (State fs ts)
-                                                                                 in (type1, valid1, error1)
+                                                                        -- then let (type1, bcheck1, valid1, error1) = check_initial_board e (head (lookup5 ts "@@@@")) (form_board (head (lookup5 ts "&&&&"))) (not((length e) == 1)) (State fs ts)
+                                                                        --          in (type1, valid1, error1)
+                                                                        then (Sgl Em, True, "")
                                                                         else (check_func_call e (head (lookup5 fs s)) (State fs ts))
 check_stmt (SExpr e _) st               = check_expr e st
 check_stmt _ _                          = (Sgl Em, True, "")

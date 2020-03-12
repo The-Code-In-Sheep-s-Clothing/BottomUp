@@ -3,13 +3,9 @@
 ## Prerequisites
 * ghc - download the installer
 * cabal - comes with ghc
-* alex - cabal install alex
-* happy - cabal install happy
 
 ## Generic Build
-* cabal install
-* cabal configure
-* cabal build
+* cabal v2-build
 
 ## Generic Execute
 * cabal new-exec BottomUp filename

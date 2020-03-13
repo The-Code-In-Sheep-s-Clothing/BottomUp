@@ -1,12 +1,9 @@
 type Board = Array(3,3) of Player & { Empty }
 type Input = Position
 
-type God = {Int}
-type Big = Player & {C, D}
-
 initialBoard : Board
 initialBoard ! (x, y) = Empty
-initialBoard ! (1, 2) = Empty
+initialBoard ! (1, 2) = A
 
 goFirst : Player
 goFirst = A
@@ -18,13 +15,13 @@ loop : (Board,Player) -> (Board,Player)
 loop(b,p) = while not(gameOver(b,p)) do tryMove(b,p)
 
 -- Game over function !
-gameOver : (Board,Player) -> Bool 
+gameOver : (Board ,Player) -> Bool 
 gameOver(b,p) = or(threeInARow(b),isFull(b))
 
 isValid : (Board,Position) -> Bool
 isValid(b,p) = if (b ! p) == Empty then True else False
 
-outcome : (Board,Player) -> Player & { Tie }
+outcome : (Board,Player) -> Player & {Tie}
 outcome(b,p) = if inARow(3,A,b) then A else
                if inARow(3,B,b) then B else
                Tie

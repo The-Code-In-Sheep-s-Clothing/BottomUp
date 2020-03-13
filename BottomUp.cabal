@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                BottomUp
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            A compiler for the board game language
 -- description:         
 homepage:            https://github.com/The-Code-In-Sheep-s-Clothing/BottomUp

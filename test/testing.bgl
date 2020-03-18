@@ -36,4 +36,3 @@ play(a,b) = outcome(loop(a,b))
 
 result : Player & { Tie }
 result = play(initialBoard,goFirst)
-

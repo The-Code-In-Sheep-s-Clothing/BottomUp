@@ -24,6 +24,176 @@ data BaseType  = Base String
                | Em
                deriving (Show,Eq)
 
+check_start :: [Stmt] -> (Bool, String) 
+check_start [] = (True, "")
+check_start x = let (state1, valid1, error1) = check_dup_name x (State [] [])
+                        in if(valid1) 
+                           then let (State fs ts, valid2, error2) = check_valid_def_types state1
+                               in if(valid2)
+                                        then let (valid3, error3) = check x (State fs ts)
+                                                in (valid3, error3)
+                                        else (False, error2 ++ "\n")
+                        else (False, error1 ++ "\n")
+
+check_stmt :: Stmt -> State -> (NewType, Bool, String)
+check_stmt (Conditional e stmt1 stmt2 _) st = let (type1, valid1, error1) = (check_expr e st)
+                                                  (type2, valid2, error2) = check_stmt stmt1 st
+                                                  (type3, valid3, error3) = check_stmt stmt2 st
+                                                  in if(type_comp type1 (Sgl (Base "Bool")) st)
+                                                        then let type4 = condition_type_match type2 type3 st
+                                                                in if(eparse type4)
+                                                                        then if(null type4)
+                                                                                then (Sgl Em, valid1 && valid2 && valid3, error1 ++ error2 ++ error3)
+                                                                                else (head type4, valid1 && valid2 && valid3, error1 ++ error2 ++ error3) 
+                                                                        else (Sgl Em, False, "\nConditional statements do not return the same type. Then type: " ++ (t_to_s type2) ++ " Else Type: " ++ (t_to_s type3) ++ error1 ++ error2 ++ error3)
+                                                                        
+                                                                        
+                                                        else (Sgl Em, False, "\nExpression " ++ (show e) ++ " is not of type Bool" ++ error1 ++ error2 ++ error3)
+check_stmt (Let s e stmt _) (State fs ts)           = let (type1, valid1, error1) = check_expr e (State fs ts)
+                                                        in if(eparse [type1])
+                                                                then check_stmt stmt (State ([(Fdef s (Sgl Em) type1)] ++ fs) ts )
+                                                                else (Sgl Em, valid1, error1)
+check_stmt (While e1 e2 _) st          = let (type1, valid1, error1) = check_expr e1 st
+                                             (type2, valid2, error2) = check_expr e2 st
+                                        in if(type_comp type1 (Sgl (Base "Bool")) st)
+                                            then (type2, valid1 && valid2, error1 ++ error2)
+                                            else (Sgl Em, False, "\nExpression " ++ (show e1) ++ " is not of type Bool" ++ error1 ++ error2)
+check_stmt (Valdef (Signature s t _) e _) (State fs ts)          = if(check_type_init_board e) 
+                                                                        then let (type1, bcheck1, valid1, error1) = (check_initial_board e (head (lookup5 ts "@@@@")) (form_board (head (lookup5 ts "&&&&"))) (not((length e) == 1)) (State fs ts))
+                                                                                 in (type1, valid1, error1)
+                                                                        else check_func_call e (head (lookup5 fs s)) (State fs ts)
+check_stmt (SExpr e _) st               = check_expr e st
+check_stmt _ _                          = (Sgl Em, True, "")
+
+check_expr :: Expr -> State -> (NewType, Bool, String)
+check_expr (EInt _ _) st                          = (Sgl (Base "Int"), True, "")
+check_expr (Paren e _) st                         = check_expr e st
+check_expr (ETuple t _) st                        = check_tuple t st
+check_expr (Infix e1 b e2 _) st                   = check_binop e1 b e2 st
+check_expr (FunctionApp s e _) (State fs ts)      = check_function_app s e (State fs ts)
+check_expr (ESymbol s _) (State fs ts)            = check_symbol s fs
+check_expr (Empty) st                           = (Sgl Em, True, "")
+
+check_type_types :: [Def] -> State -> (State, Bool, String)
+check_type_types [] st = (st, True, "")
+check_type_types (x:xs) st = let (defs, state, valid, error) = check_type_types_helper [x] xs st
+                                in (state, valid, error)
+
+check_type_types_helper :: [Def] -> [Def] -> State -> ([Def], State, Bool, String)
+check_type_types_helper [] d st = (d, st, True, "")
+check_type_types_helper [(Tdef "&&&&" t)] _ (State fs ts) = ([], State fs ([Tdef "&&&&" t] ++ ts), True, "")
+check_type_types_helper [(Tdef s1 t)] d st = let (type1, defs1, state1, valid1, error1) = ast_convert [s1] t d st
+                                                        in if(valid1)
+                                                                then if(null defs1) 
+                                                                        then (defs1, state1, valid1, error1)
+                                                                        else let (defs2, state2, valid2, error2) = check_type_types_helper [head defs1] (tail defs1) state1
+                                                                                in (defs2, state2, valid1 && valid2, error1 ++ error2)
+                                                                else (defs1, state1, valid1, error1)
+
+ast_convert :: [String] -> NewType -> [Def] -> State -> (NewType, [Def], State, Bool, String)
+ast_convert s (Sgl sg) d st = let(type1, defs1, (State fs ts), valid1, error1) = ast_convert_b s sg d False st 
+                                in if(valid1)
+                                        then (Sgl (Base (head s)), defs1, State fs (([Tdef (head s) type1]) ++ ts), valid1, error1)
+                                        else (Sgl Em, defs1, State fs ts, valid1, error1)
+ast_convert s (Dbl x) d st = let (type1, defs1, (State fs ts), valid1, error1) = ast_convert_x s x d st
+                                                in if(valid1)
+                                                        then (Sgl (Base (head s)), defs1, State fs (([Tdef (head s) type1]) ++ ts), valid1, error1)
+                                                        else (Sgl Em, defs1, State fs ts, valid1, error1)
+ast_convert s (Tpl x) d st = let (Tpl x1, defs1, (State fs1 ts1), valid1, error1) = ast_convert_t s x d st
+                                        in if(valid1)
+                                                then (Sgl (Base (head s)), defs1, State fs1 (([Tdef (head s) (Tpl x1)]) ++ ts1), valid1, error1)
+                                                else (Sgl Em, defs1, (State fs1 ts1), False,  error1)
+                                        
+
+ast_convert_t :: [String] -> [[BaseType]] -> [Def] -> State -> (NewType, [Def], State, Bool, String)
+ast_convert_t s [] d st = (Tpl [], d, st, True, "")
+ast_convert_t s (x:xs) d st = let (Dbl x1, defs1, state1, valid1, error1) = ast_convert_x s x d st 
+                                        in let (Tpl x2, defs2, state2, valid2, error2) = ast_convert_t s xs defs1 state1
+                                                in (Tpl (x2 ++ [x1]), defs2, state2, valid1 && valid2, error1 ++ error2)
+
+ast_convert_x :: [String] -> [BaseType] -> [Def] -> State -> (NewType, [Def], State, Bool, String)
+ast_convert_x s [b] d st = ast_convert_b s b d False st
+ast_convert_x s (b:bs) d st = let (Sgl base1, defs1, state1, valid1, error1) = ast_convert_b s b d False st 
+                                        in let (Dbl base2, defs2, state2, valid2, error2) = ast_convert_x2 s bs defs1 state1
+                                                in (Dbl ([base1] ++ base2), defs2, state2, valid1 && valid2, error1 ++ error2)
+
+ast_convert_x2 :: [String] -> [BaseType] -> [Def] -> State -> (NewType, [Def], State, Bool, String)
+ast_convert_x2 s [b] d st = let (Sgl bas, def1, state1, valid1, error1) = ast_convert_b s b d True st
+                                in (Dbl [bas], def1, state1, valid1, error1)
+ast_convert_x2 s (b:bs) d st = let (Sgl base1, defs1, state1, valid1, error1) = ast_convert_b s b d True st 
+                                        in let (Dbl base2, defs2, state2, valid2, error2) = ast_convert_x2 s bs defs1 state1
+                                                in (Dbl ([base1] ++ base2), defs2, state2, valid1 && valid2, error1 ++ error2)
+
+ast_convert_b :: [String] -> BaseType -> [Def] -> Bool -> State -> (NewType, [Def], State, Bool, String)
+ast_convert_b s1 (Sls s2) d firstFlag (State fs ts) = if(exists_in ts s2) 
+                                                                then if(firstFlag && (check_base ts s2 ts))
+                                                                        then (Sgl Em, d, State fs ts, False, "\nType " ++ s2 ++ " in definition of type " ++ (head s1) ++ ". Types can only be expanded by Values")
+                                                                        else (Sgl (Base s2), d, State fs ts, True, "")
+                                                                else if(exists_in fs s2)
+                                                                        then (Sgl Em, d, State fs ts, False, "\nValue " ++ s2 ++ " cannot be refreneced in two different type definitions")
+                                                                        else if(exists_in d s2)
+                                                                                then let ((Tdef s3 t2):dfs) = lookup2 d s2
+                                                                                                in ast_convert ([s3] ++ s1) t2 dfs (State fs ts)
+                                                                                else if(and (map ((==) s2) s1))
+                                                                                        then (Sgl Em, d, State fs ts, False, "\nType definition of type " ++ s2 ++ " cannot refrence the following types " ++ (intercalate " " s1))
+                                                                                        else (Sgl (Sls s2), d, State ([Fdef s2 (Sgl Em) (Sgl (Sls s2))] ++ fs) ts, True, "")                                                                           
+ast_convert_b s1 (Base s2) d _ (State fs ts) = if(exists_in ts s2)
+                                                        then (Sgl (Base s2), d, State fs ts, True, "")
+                                                        else if(exists_in fs s2)
+                                                                then (Sgl Em, d, State fs ts, False, "\nType declarations using values must use {}")
+                                                                else if (exists_in d s2)
+                                                                        then let ((Tdef s3 t2):dfs) = lookup2 d s2
+                                                                                in ast_convert ([s3] ++ s1) t2 dfs (State fs ts)
+                                                                        else (Sgl Em, d, State fs ts, False, "\nReference to undefined type " ++ s2 ++ " in type definition")
+
+check_base :: [Def] -> String -> [Def] -> Bool
+check_base [d] s ds = check_base2 ds d
+check_base ((Tdef s1 t):xs) s2 ds = if(s1 == s2)
+                                        then check_base2 ds (Tdef s1 t) 
+                                        else check_base xs s2 ds
+
+check_base2 :: [Def] -> Def -> Bool
+check_base2 _ (Tdef _ (Sgl (Base "Int"))) = True
+check_base2 _ (Tdef _ (Sgl (Base "Board"))) = True
+check_base2 _ (Tdef _ (Sgl (Base "Bool"))) = True
+check_base2 ds (Tdef _ (Sgl (Base s2))) = check_base2 ds (head (lookup5 ds s2)) 
+check_base2 _ (Tdef _ (Sgl (Sls _))) = False
+check_base2 ds (Tdef s1 (Dbl (d:_))) = check_base2 ds (Tdef s1 (Sgl d))
+check_base2 ds (Tdef s1 (Tpl ([Tplblk]:ts))) = let (ts1, ts2) = tpl_extract ts
+                                                   in (check_base2 ds (Tdef s1 (Tpl ts1))) || (check_base2 ds (Tdef s1 (Tpl ts2)))
+check_base2 ds (Tdef s1 (Tpl (t:ts))) = (check_base2 ds (Tdef s1 (Dbl t))) || (check_base2 ds (Tdef s1 (Tpl ts)))
+check_base2 ds (Tdef s1 (Tpl [])) = False
+
+check_dup_name :: [Stmt] -> State -> (State, Bool, String)
+check_dup_name [] st = (st, True, "")
+check_dup_name (x:xs) st = let (state1, valid1, error1) = check_dup_name_stmt x st
+                            in let (state2, valid2, error2) = check_dup_name xs state1
+                                    in (state2, valid1 && valid2, error2 ++ error1)
+
+check_equation_name :: String -> [Equation] -> Bool
+check_equation_name s1 [(Equation s2 _ _ _)] = s1 == s2
+check_equation_name s1 ((Equation s2 _ _ _):xs) = (s1 == s2) && (check_equation_name s1 xs)
+check_equation_name s1 [(ArrayEquation s2 _ _ _)] = s1 == s2
+check_equation_name s1 ((ArrayEquation s2 _ _ _):xs) = (s1 == s2) && (check_equation_name s1 xs)
+
+check_dup_name_stmt :: Stmt -> State -> (State, Bool, String) 
+check_dup_name_stmt (Typedef s t _) (State fs ts)  =  if(lookup_start (fs ++ ts) s)
+                                                        then (State fs ts, False, "\nType name " ++ s ++ " already used")
+                                                        else (State fs ([Tdef s (type_convert t)] ++ ts), True, "")                                                
+check_dup_name_stmt (Valdef (Signature s t _) e _) (State fs ts) = if(lookup_start (fs ++ ts) s)
+                                                                then (State fs ts, False, "\nFunction name " ++ s ++ " already used")
+                                                                else if(check_equation_name s e)
+                                                                        then let d = ftype_convert s t
+                                                                                in (State ([d] ++ fs) ts, True, "")
+                                                                        else (State fs ts, False, "\nFunction " ++ s ++ " has inconsistent naming" )                                                                
+check_dup_name_stmt (TypedefFunc s (FunctionApp _ e _) t _) (State fs ts)  = if(not (s == "Board"))
+                                                                                then ((State fs ts), False, "\nof type not allowed for non board definitions")
+                                                                                else case e of 
+                                                                                        (ETuple (TupleList [TupleValue (EInt v1 _) _, TupleValue (EInt v2 _) _] _) _) -> (State fs ([Tdef "@@@@" (type_convert t)] ++ [Tdef "&&&&" (Dbl [Base (show v1), Base (show v2)])] ++ ts), True, "")
+                                                                                        _ -> (State fs ts, False, "\nboard size must be defined by (int, int) " ++ (show e))
+check_dup_name_stmt _ st = (st, True, "")
+
+
 t_to_s :: NewType -> String
 t_to_s t = "(" ++ (t_to_s2 t) ++ ")" 
 
@@ -34,8 +204,9 @@ t_to_s2 (Sgl (Sls s)) = s
 t_to_s2 (Dbl [d]) = t_to_s2 (Sgl d)
 t_to_s2 (Dbl (d:ds)) = (t_to_s2 (Sgl d)) ++ " & " ++ (t_to_s2 (Dbl ds))
 t_to_s2 (Tpl ([Tplblk]:ts)) = let (ts1, ts2) = tpl_extract ts
-                                 in "(" ++ ((t_to_s2 (Tpl ts1))) ++ ")" ++ (t_to_s2 (Tpl ts2))
-t_to_s2 (Tpl (t:ts)) = "(" ++ ((t_to_s2 (Dbl t))) ++ ")" ++ (t_to_s2 (Tpl ts))
+                                 in "(" ++ ((t_to_s2 (Tpl ts1))) ++ ")," ++ (t_to_s2 (Tpl ts2))
+t_to_s2 (Tpl [t]) = ((t_to_s2 (Dbl t)))                                 
+t_to_s2 (Tpl (t:ts)) = ((t_to_s2 (Dbl t))) ++ "," ++ (t_to_s2 (Tpl ts))
 t_to_s2 (Tpl []) = ""
 
 exists_in_dbl :: [BaseType] -> String -> State -> Bool
@@ -233,16 +404,7 @@ builtin_state = State  [Fdef "A" (Sgl Em) (Sgl (Sls "A")),
                         Tdef "Board" (Sgl (Base "Board")), 
                         Tdef "Position" (Tpl [[Base "Int"], [Base "Int"]])]
 
-check_start :: [Stmt] -> (Bool, String) 
-check_start [] = (True, "")
-check_start x = let (state1, valid1, error1) = check_dup_name x (State [] [])
-                        in if(valid1) 
-                           then let (State fs ts, valid2, error2) = check_valid_def_types state1
-                               in if(valid2)
-                                        then let (valid3, error3) = check x (State fs ts)
-                                                in (valid3, error3)
-                                        else (False, error2 ++ "\n")
-                        else (False, error1 ++ "\n")
+
 
 check :: [Stmt] -> State -> (Bool, String)
 check [] _ = (True, "")
@@ -339,14 +501,7 @@ check_function_app s1 e (State fs ts) = let d = lookup5 fs s1
                                                                                         
 
 
-check_expr :: Expr -> State -> (NewType, Bool, String)
-check_expr (EInt _ _) st                          = (Sgl (Base "Int"), True, "")
-check_expr (Paren e _) st                         = check_expr e st
-check_expr (ETuple t _) st                        = check_tuple t st
-check_expr (Infix e1 b e2 _) st                   = check_binop e1 b e2 st
-check_expr (FunctionApp s e _) (State fs ts)      = check_function_app s e (State fs ts)
-check_expr (ESymbol s _) (State fs ts)            = check_symbol s fs
-check_expr (Empty) st                           = (Sgl Em, True, "")
+
 
 bs_to_str :: BaseType -> String
 bs_to_str (Base s) = s
@@ -392,36 +547,6 @@ eparse _  = True
 check_type_init_board :: [Equation] -> Bool
 check_type_init_board ((ArrayEquation _ _ _ _):xs) = True
 check_type_init_board _ = False
-
-check_stmt :: Stmt -> State -> (NewType, Bool, String)
-check_stmt (Conditional e stmt1 stmt2 _) st = let (type1, valid1, error1) = (check_expr e st)
-                                                  (type2, valid2, error2) = check_stmt stmt1 st
-                                                  (type3, valid3, error3) = check_stmt stmt2 st
-                                                  in if(type_comp type1 (Sgl (Base "Bool")) st)
-                                                        then let type4 = condition_type_match type2 type3 st
-                                                                in if(eparse type4)
-                                                                        then if(null type4)
-                                                                                then (Sgl Em, valid1 && valid2 && valid3, error1 ++ error2 ++ error3)
-                                                                                else (head type4, valid1 && valid2 && valid3, error1 ++ error2 ++ error3) 
-                                                                        else (Sgl Em, False, "\nConditional statements do not return the same type. Then type: " ++ (t_to_s type2) ++ " Else Type: " ++ (t_to_s type3) ++ error1 ++ error2 ++ error3)
-                                                                        
-                                                                        
-                                                        else (Sgl Em, False, "\nExpression " ++ (show e) ++ " is not of type Bool" ++ error1 ++ error2 ++ error3)
-check_stmt (Let s e stmt _) (State fs ts)           = let (type1, valid1, error1) = check_expr e (State fs ts)
-                                                        in if(eparse [type1])
-                                                                then check_stmt stmt (State ([(Fdef s (Sgl Em) type1)] ++ fs) ts )
-                                                                else (Sgl Em, valid1, error1)
-check_stmt (While e1 e2 _) st          = let (type1, valid1, error1) = check_expr e1 st
-                                             (type2, valid2, error2) = check_expr e2 st
-                                        in if(type_comp type1 (Sgl (Base "Bool")) st)
-                                            then (type2, valid1 && valid2, error1 ++ error2)
-                                            else (Sgl Em, False, "\nExpression " ++ (show e1) ++ " is not of type Bool" ++ error1 ++ error2)
-check_stmt (Valdef (Signature s t _) e _) (State fs ts)          = if(check_type_init_board e) 
-                                                                        then let (type1, bcheck1, valid1, error1) = (check_initial_board e (head (lookup5 ts "@@@@")) (form_board (head (lookup5 ts "&&&&"))) (not((length e) == 1)) (State fs ts))
-                                                                                 in (type1, valid1, error1)
-                                                                        else check_func_call e (head (lookup5 fs s)) (State fs ts)
-check_stmt (SExpr e _) st               = check_expr e st
-check_stmt _ _                          = (Sgl Em, True, "")
 
 
 tpl_len :: [[BaseType]] -> Int
@@ -628,121 +753,3 @@ full_type_to_str_x fstr ((Sls s):xs) (State fs ts) = if(exists_in ts s)
 full_type_to_str_x fstr [] st = (st, [], True, "")
 
 
-check_type_types :: [Def] -> State -> (State, Bool, String)
-check_type_types [] st = (st, True, "")
-check_type_types (x:xs) st = let (defs, state, valid, error) = check_type_types_helper [x] xs st
-                                in (state, valid, error)
-
-check_type_types_helper :: [Def] -> [Def] -> State -> ([Def], State, Bool, String)
-check_type_types_helper [] d st = (d, st, True, "")
-check_type_types_helper [(Tdef "&&&&" t)] _ (State fs ts) = ([], State fs ([Tdef "&&&&" t] ++ ts), True, "")
-check_type_types_helper [(Tdef s1 t)] d st = let (type1, defs1, state1, valid1, error1) = ast_convert [s1] t d st
-                                                        in if(valid1)
-                                                                then if(null defs1) 
-                                                                        then (defs1, state1, valid1, error1)
-                                                                        else let (defs2, state2, valid2, error2) = check_type_types_helper [head defs1] (tail defs1) state1
-                                                                                in (defs2, state2, valid1 && valid2, error1 ++ error2)
-                                                                else (defs1, state1, valid1, error1)
-
-ast_convert :: [String] -> NewType -> [Def] -> State -> (NewType, [Def], State, Bool, String)
-ast_convert s (Sgl sg) d st = let(type1, defs1, (State fs ts), valid1, error1) = ast_convert_b s sg d False st 
-                                in if(valid1)
-                                        then (Sgl (Base (head s)), defs1, State fs (([Tdef (head s) type1]) ++ ts), valid1, error1)
-                                        else (Sgl Em, defs1, State fs ts, valid1, error1)
-ast_convert s (Dbl x) d st = let (type1, defs1, (State fs ts), valid1, error1) = ast_convert_x s x d st
-                                                in if(valid1)
-                                                        then (Sgl (Base (head s)), defs1, State fs (([Tdef (head s) type1]) ++ ts), valid1, error1)
-                                                        else (Sgl Em, defs1, State fs ts, valid1, error1)
-ast_convert s (Tpl x) d st = let (Tpl x1, defs1, (State fs1 ts1), valid1, error1) = ast_convert_t s x d st
-                                        in if(valid1)
-                                                then (Sgl (Base (head s)), defs1, State fs1 (([Tdef (head s) (Tpl x1)]) ++ ts1), valid1, error1)
-                                                else (Sgl Em, defs1, (State fs1 ts1), False,  error1)
-                                        
-
-ast_convert_t :: [String] -> [[BaseType]] -> [Def] -> State -> (NewType, [Def], State, Bool, String)
-ast_convert_t s [] d st = (Tpl [], d, st, True, "")
-ast_convert_t s (x:xs) d st = let (Dbl x1, defs1, state1, valid1, error1) = ast_convert_x s x d st 
-                                        in let (Tpl x2, defs2, state2, valid2, error2) = ast_convert_t s xs defs1 state1
-                                                in (Tpl (x2 ++ [x1]), defs2, state2, valid1 && valid2, error1 ++ error2)
-
-ast_convert_x :: [String] -> [BaseType] -> [Def] -> State -> (NewType, [Def], State, Bool, String)
-ast_convert_x s [b] d st = ast_convert_b s b d False st
-ast_convert_x s (b:bs) d st = let (Sgl base1, defs1, state1, valid1, error1) = ast_convert_b s b d False st 
-                                        in let (Dbl base2, defs2, state2, valid2, error2) = ast_convert_x2 s bs defs1 state1
-                                                in (Dbl ([base1] ++ base2), defs2, state2, valid1 && valid2, error1 ++ error2)
-
-ast_convert_x2 :: [String] -> [BaseType] -> [Def] -> State -> (NewType, [Def], State, Bool, String)
-ast_convert_x2 s [b] d st = let (Sgl bas, def1, state1, valid1, error1) = ast_convert_b s b d True st
-                                in (Dbl [bas], def1, state1, valid1, error1)
-ast_convert_x2 s (b:bs) d st = let (Sgl base1, defs1, state1, valid1, error1) = ast_convert_b s b d True st 
-                                        in let (Dbl base2, defs2, state2, valid2, error2) = ast_convert_x2 s bs defs1 state1
-                                                in (Dbl ([base1] ++ base2), defs2, state2, valid1 && valid2, error1 ++ error2)
-
-ast_convert_b :: [String] -> BaseType -> [Def] -> Bool -> State -> (NewType, [Def], State, Bool, String)
-ast_convert_b s1 (Sls s2) d firstFlag (State fs ts) = if(exists_in ts s2) 
-                                                                then if(firstFlag && (check_base ts s2 ts))
-                                                                        then (Sgl Em, d, State fs ts, False, "\nType " ++ s2 ++ " in definition of type " ++ (head s1) ++ ". Types can only be expanded by Values")
-                                                                        else (Sgl (Base s2), d, State fs ts, True, "")
-                                                                else if(exists_in fs s2)
-                                                                        then (Sgl Em, d, State fs ts, False, "\nValue " ++ s2 ++ " cannot be refreneced in two different type definitions")
-                                                                        else if(exists_in d s2)
-                                                                                then let ((Tdef s3 t2):dfs) = lookup2 d s2
-                                                                                                in ast_convert ([s3] ++ s1) t2 dfs (State fs ts)
-                                                                                else if(and (map ((==) s2) s1))
-                                                                                        then (Sgl Em, d, State fs ts, False, "\nType definition of type " ++ s2 ++ " cannot refrence the following types " ++ (intercalate " " s1))
-                                                                                        else (Sgl (Sls s2), d, State ([Fdef s2 (Sgl Em) (Sgl (Sls s2))] ++ fs) ts, True, "")                                                                           
-ast_convert_b s1 (Base s2) d _ (State fs ts) = if(exists_in ts s2)
-                                                        then (Sgl (Base s2), d, State fs ts, True, "")
-                                                        else if(exists_in fs s2)
-                                                                then (Sgl Em, d, State fs ts, False, "\nType declarations using values must use {}")
-                                                                else if (exists_in d s2)
-                                                                        then let ((Tdef s3 t2):dfs) = lookup2 d s2
-                                                                                in ast_convert ([s3] ++ s1) t2 dfs (State fs ts)
-                                                                        else (Sgl Em, d, State fs ts, False, "\nReference to undefined type " ++ s2 ++ " in type definition")
-
-check_base :: [Def] -> String -> [Def] -> Bool
-check_base [d] s ds = check_base2 ds d
-check_base ((Tdef s1 t):xs) s2 ds = if(s1 == s2)
-                                        then check_base2 ds (Tdef s1 t) 
-                                        else check_base xs s2 ds
-
-check_base2 :: [Def] -> Def -> Bool
-check_base2 _ (Tdef _ (Sgl (Base "Int"))) = True
-check_base2 _ (Tdef _ (Sgl (Base "Board"))) = True
-check_base2 _ (Tdef _ (Sgl (Base "Bool"))) = True
-check_base2 ds (Tdef _ (Sgl (Base s2))) = check_base2 ds (head (lookup5 ds s2)) 
-check_base2 _ (Tdef _ (Sgl (Sls _))) = False
-check_base2 ds (Tdef s1 (Dbl (d:_))) = check_base2 ds (Tdef s1 (Sgl d))
-check_base2 ds (Tdef s1 (Tpl ([Tplblk]:ts))) = let (ts1, ts2) = tpl_extract ts
-                                                   in (check_base2 ds (Tdef s1 (Tpl ts1))) || (check_base2 ds (Tdef s1 (Tpl ts2)))
-check_base2 ds (Tdef s1 (Tpl (t:ts))) = (check_base2 ds (Tdef s1 (Dbl t))) || (check_base2 ds (Tdef s1 (Tpl ts)))
-check_base2 ds (Tdef s1 (Tpl [])) = False
-
-check_dup_name :: [Stmt] -> State -> (State, Bool, String)
-check_dup_name [] st = (st, True, "")
-check_dup_name (x:xs) st = let (state1, valid1, error1) = check_dup_name_stmt x st
-                            in let (state2, valid2, error2) = check_dup_name xs state1
-                                    in (state2, valid1 && valid2, error2 ++ error1)
-
-check_equation_name :: String -> [Equation] -> Bool
-check_equation_name s1 [(Equation s2 _ _ _)] = s1 == s2
-check_equation_name s1 ((Equation s2 _ _ _):xs) = (s1 == s2) && (check_equation_name s1 xs)
-check_equation_name s1 [(ArrayEquation s2 _ _ _)] = s1 == s2
-check_equation_name s1 ((ArrayEquation s2 _ _ _):xs) = (s1 == s2) && (check_equation_name s1 xs)
-
-check_dup_name_stmt :: Stmt -> State -> (State, Bool, String) 
-check_dup_name_stmt (Typedef s t _) (State fs ts)  =  if(lookup_start (fs ++ ts) s)
-                                                        then (State fs ts, False, "\nType name " ++ s ++ " already used")
-                                                        else (State fs ([Tdef s (type_convert t)] ++ ts), True, "")                                                
-check_dup_name_stmt (Valdef (Signature s t _) e _) (State fs ts) = if(lookup_start (fs ++ ts) s)
-                                                                then (State fs ts, False, "\nFunction name " ++ s ++ " already used")
-                                                                else if(check_equation_name s e)
-                                                                        then let d = ftype_convert s t
-                                                                                in (State ([d] ++ fs) ts, True, "")
-                                                                        else (State fs ts, False, "\nFunction " ++ s ++ " has inconsistent naming" )                                                                
-check_dup_name_stmt (TypedefFunc s (FunctionApp _ e _) t _) (State fs ts)  = if(not (s == "Board"))
-                                                                                then ((State fs ts), False, "\nof type not allowed for non board definitions")
-                                                                                else case e of 
-                                                                                        (ETuple (TupleList [TupleValue (EInt v1 _) _, TupleValue (EInt v2 _) _] _) _) -> (State fs ([Tdef "@@@@" (type_convert t)] ++ [Tdef "&&&&" (Dbl [Base (show v1), Base (show v2)])] ++ ts), True, "")
-                                                                                        _ -> (State fs ts, False, "\nboard size must be defined by (int, int) " ++ (show e))
-check_dup_name_stmt _ st = (st, True, "")

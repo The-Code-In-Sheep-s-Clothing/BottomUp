@@ -16,12 +16,11 @@ builtin_types = [
     "type BoardProperty = Board -> Bool"]
 
 input_funcs = [
-    "input :: Board -> ({input_type})\n\
-    \input b = unsafePerformIO $ getInts b",
+    "input :: Int -> ({input_type})\n\
+    \input _ = unsafePerformIO $ getInts 0",
 
-    "getInts :: Board -> IO ({input_type})\n\
-    \getInts b = do\n\
-    \   putStrLn $ printBoard b\n\
+    "getInts :: Int -> IO ({input_type})\n\
+    \getInts _ = do\n\
     \   return ({getInts})"]
 
 builtin_funcs = [
@@ -73,7 +72,13 @@ builtin_funcs = [
     \maxCol = snd . size",
 
     "place :: (Player, Board, Position) -> Board\n\
-    \place (p, b, pos) = b // [(pos, ContentCon p)]",
+    \place (p, b, pos) = unsafePerformIO $ place_wrapper (p, b, pos)",
+
+    "place_wrapper :: (Player, Board, Position) -> IO Board\n\
+    \place_wrapper (p, b, pos) = \n\
+    \   let new_board = (b // [(pos, ContentCon p)]) in do\n\
+    \       putStrLn $ printBoard new_board\n\
+    \       return (new_board)",
 
     "next :: Player -> Player\n\
     \next A = B\n\
@@ -118,6 +123,9 @@ builtin_funcs = [
 
     "getBoardContent :: (Board, Position) -> Content\n\
     \getBoardContent (b,p) = b!p",
+
+    "printBoardIO :: Board -> IO Board\n\
+    \printBoardIO b = (putStrLn $ printBoard b) >> return b",
 
     "printBoard :: Board -> String\n\
     \printBoard b = printBoardHelp b (bounds b) (maxLength b (bounds b))",

@@ -39,7 +39,7 @@ compile_builtin_funcs st = "-- Builtin functions\n" ++ (intercalate "\n\n" built
 -- Compilation code from AST
 compile :: [Stmt] -> String
 
-compile x = "import OutputBuiltins\nimport Data.Array\n" ++ let (res, st) = runState (compile_stmts x) [] in 
+compile x = "import OutputBuiltins\nimport Data.Array\nimport System.IO.Unsafe" ++ let (res, st) = runState (compile_stmts x) [] in 
     compile_state st ++ "\n" ++ res
 
 compile_prelude :: [Stmt] -> String
@@ -67,7 +67,6 @@ compile_content_state ((s,c,l):es) = if (s == "Content") then
     " deriving (Show, Eq)"
     else
         compile_content_state es
-
 
 compile_single_state :: (String, String, [String]) -> String
 compile_single_state ("Content", c, l) = ""
@@ -114,13 +113,13 @@ compile_valdef (Valdef (Signature s t _) e _) =
     (s ++ " :: ") ++> compile_type t <++ "\n" <++> (intercalateM "\n" (map (compile_equation (get_return_type t)) e))
 
 compile_boardequ :: [Equation] -> StateRet
-compile_boardequ [] = return ""
+compile_boardequ [] = return "unsafePerformIO $ printBoardIO $ "
 compile_boardequ ((ArrayEquation s (ETuple (TupleList ((TupleValue (ESymbol _ _) _):(TupleValue (EInt y _) _):xs) _) _) st _):es) =
          (compile_boardequ es) <++ ("modifyCol " ++ show(y) ++ " ") <++> (compile_stmt "" st) <++ " ("
 compile_boardequ ((ArrayEquation s (ETuple (TupleList ((TupleValue (EInt x _) _):(TupleValue (ESymbol _ _) _):xs) _) _) st _):es) =
          (compile_boardequ es) <++ ("modifyRow " ++ show(x) ++ " ") <++> (compile_stmt "" st) <++ " ("
 compile_boardequ ((ArrayEquation s (ETuple (TupleList ((TupleValue (EInt x _) _):(TupleValue (EInt y _) _):xs) _) _) st _):es) =
-         (compile_boardequ es) <++ ("modifyElement (" ++ show(x) ++ ", " ++ show(y) ++ ") ") <++> (compile_stmt "" st) <++ " ("
+         (compile_boardequ es) <++ ("modifyElement (" ++ show(x) ++ ", " ++ show(y) ++ ") ") <++> ("(" ++> (compile_stmt "Content" st) <++ ")") <++ " ("
 
 parenList :: [Equation] -> String
 parenList [] = ""
@@ -225,7 +224,9 @@ compile_tuple (TupleValue t _) = compile_expr t
 
 compile_expr :: Expr -> String
 compile_expr (EInt i _) = show i
-compile_expr (ESymbol s _) = s
+compile_expr (ESymbol s _)
+    | s == "input" = "input 0"
+    | otherwise = s
 compile_expr (Paren e _) = "(" ++ compile_expr e ++ ")"
 compile_expr (ETuple t _) = compile_tuple t
 -- Need to check if it's a built in function with a different signature (or,and,...)
@@ -236,7 +237,6 @@ compile_expr (FunctionApp s t@(ETuple e@(TupleList l _) _) _)
 compile_expr (FunctionApp s e _)
     | s == "or" || s == "and" = "(" ++ s ++ " [" ++ 
     compile_expr e ++ "])"
-    | s == "input" = "(" ++ s ++ " " ++ compile_expr e ++ " )"
     | otherwise = "(" ++ s ++ " " ++ compile_expr e ++ ")"
 compile_expr (Infix e1 b e2 _) = compile_expr e1 ++ compile_binop b ++ compile_expr e2
 compile_expr (Empty) = ""

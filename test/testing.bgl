@@ -27,7 +27,7 @@ outcome(b,p) = if inARow(3,A,b) then A else
                Tie
 
 tryMove : (Board,Player) -> (Board,Player)
-tryMove(b,p) = let pos = outcome in
+tryMove(b,p) = let pos = input in
                    if isValid(b,pos) then (place(p,b,pos),next(p))
                                      else (b,p)
 

@@ -386,12 +386,12 @@ lookup2 (d:ds) s = if(exists_in [d] s)
                         else (lookup2 ds s) ++ [d]
 
 builtin_state :: State 
-builtin_state = State  [Fdef "A" (Sgl Em) (Sgl (Sls "A")), 
-                        Fdef "B" (Sgl Em) (Sgl (Sls "B")),
+builtin_state = State  [Fdef "A" (Sgl Em) (Sgl (Base "Player")), 
+                        Fdef "B" (Sgl Em) (Sgl (Base "Player")),
                         Fdef "or" (Tpl [[Base "Bool"], [Base "Bool"]]) (Sgl (Base "Bool")),
                         Fdef "not" (Sgl (Base "Bool")) (Sgl (Base "Bool")),
                         Fdef "inARow" (Tpl [[Base "Int"], [Base "Player"], [Base "Board"]]) (Sgl (Base "Bool")),
-                        Fdef "input" (Sgl (Base "Board")) (Sgl (Base "Input")),
+                        Fdef "input" (Sgl Em) (Sgl (Base "Input")),
                         Fdef "isFull" (Sgl (Base "Board")) (Sgl (Base "Bool")),
                         Fdef "getBoardContent" (Tpl [[Base "Board"], [Base "Position"]]) (Dbl [Base "Player", Sls "Empty"]),
                         Fdef "place" (Tpl [[Base "Player"], [Base "Board"], [Base "Position"]]) (Sgl (Base "Board")),
@@ -474,7 +474,7 @@ check_symbol :: String -> [Def] -> (NewType, Bool, String)
 check_symbol s [x] =  check_symbol2 s x
 check_symbol s (x:xs) = let (type1, valid1, error1) = check_symbol2 s x
                         in if(valid1) 
-                            then (type1, valid1, error1)
+                            then (type1, valid1 && (not (type_is_empty type1)), error1)
                             else check_symbol s xs
 
 check_symbol2 :: String -> Def -> (NewType, Bool, String)
@@ -482,10 +482,12 @@ check_symbol2 s1 (Fdef s2 (Sgl Em) t) = if(s1 == s2)
                                               then (t, True, "")
                                               else (Sgl Em, False, "\n" ++ s1 ++ " is undefined")
 check_symbol2 s1 (Fdef s2 _ _) = if(s1 == s2)
-                                              then (Sgl Em, False, "\nNo arguments given for call to function " ++ s1)
+                                              then (Sgl Em, True, "\nNo arguments given for call to function " ++ s1)
                                               else (Sgl Em, False, "\n" ++ s1 ++ " is undefined")
 
-
+type_is_empty :: NewType -> Bool
+type_is_empty (Sgl Em) = True
+type_is_empty _        = False
 
 check_function_app :: String -> Expr -> State -> (NewType, Bool, String) 
 check_function_app s1 e (State fs ts) = let d = lookup5 fs s1
@@ -494,9 +496,13 @@ check_function_app s1 e (State fs ts) = let d = lookup5 fs s1
                                                         else let (type1, valid1, error1) = check_expr e (State fs ts)
                                                                  (Fdef s t2 t3) = (head d)
                                                                  in if(valid1)
-                                                                        then if(type_comp type1 t2 (State fs ts))
-                                                                                then (t3, True, "")
-                                                                                else (Sgl Em, False, "\nCall to function " ++ s ++ " has incorrect arguments. Given: " ++ (t_to_s type1) ++ " Expected: " ++ (t_to_s t2))
+                                                                        then if(type_is_empty t2)
+                                                                                then if(type_is_empty type1)
+                                                                                        then (t3, True, "")
+                                                                                        else (Sgl Em, False, "\nCall to function " ++ s ++ " has incorrect arguments. Given: " ++ (t_to_s type1) ++ " Expected: No Arguments")
+                                                                                else if(type_comp type1 t2 (State fs ts))
+                                                                                                then (t3, True, "")
+                                                                                                else (Sgl Em, False, "\nCall to function " ++ s ++ " has incorrect arguments. Given: " ++ (t_to_s type1) ++ " Expected: " ++ (t_to_s t2))
                                                                         else (type1, valid1, error1)
                                                                                         
 

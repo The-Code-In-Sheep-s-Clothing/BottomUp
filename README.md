@@ -26,3 +26,6 @@ Once the compiled program is in GHCi to run it execute the result function. Othe
 
 ## VS Code
 There is an automation to build and run the testing file in VS code for development purposes. To run this using VSCode open the folder and then press Ctrl + Shift + B.
+
+## Formal Language Defintion
+See https://github.com/The-Code-In-Sheep-s-Clothing/Example-DSTL for a formal language definition

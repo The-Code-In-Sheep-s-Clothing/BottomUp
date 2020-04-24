@@ -2,9 +2,15 @@
 
 ## Prerequisites
 * ghc - download the installer
-* cabal - comes with ghc
+* cabal - comes with ghc (Might have to be installed manually, package usually called cabal-install)
 
-## Generic Build
+## Linux Install
+* ./build.sh
+
+## Linux Execute
+* ./exec.sh filename
+
+## Generic Build (For newer cabal versions)
 * cabal v2-build
 
 ## Generic Execute
@@ -14,12 +20,6 @@
 ## Windows Executable Execute
 * ./BoGL-Compiler.exe <filename>
 * ghci OutputCode.hs
-
-## Linux Install
-* ./build.sh
-
-## Linux Execute
-* ./exec.sh filename
 
 ## GHCi
 Once the compiled program is in GHCi to run it execute the result function. Other functions can be tested, but these will depend on the implementation in the .bgl file.

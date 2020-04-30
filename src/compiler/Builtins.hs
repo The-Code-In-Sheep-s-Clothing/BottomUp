@@ -8,7 +8,6 @@ imports = [
     "import System.IO"]
 
 builtin_types = [
-    "data Player = A | B deriving (Show, Eq)",
     "data Grid = Array (Int, Int) deriving Show",
     "type Board = Array (Int, Int) Content",
     "type Position = (Int, Int)",

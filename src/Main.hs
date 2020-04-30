@@ -50,5 +50,3 @@ main =
         -- putStrLn error
     
         --print (run ast)
-
-    

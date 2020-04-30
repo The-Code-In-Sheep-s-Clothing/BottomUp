@@ -59,16 +59,15 @@ Stmts         : Stmt Stmts                                                { [$1]
               | Stmt                                                      { [$1] }
 
 RequiredArgs  : TupleList                                                 { ETuple $1 (tuplePosition $1) }
-              | lparen Expr rparen                                    { $2 }
+              | lparen Expr rparen                                        { $2 }
 OptionalArgs  : TupleList                                                 { ETuple $1 (tuplePosition $1) }
-              | lparen Expr rparen                                    { $2 }
+              | lparen Expr rparen                                        { $2 }
               |                                                           { Empty }
 
 TupleList     : lparen TupleElement comma TupleHelper rparen              { TupleList ([$2] ++ $4) (tokPosition $1)}
 TupleHelper   : TupleElement comma TupleHelper                            { [$1] ++ $3}
               | TupleElement                                              { [$1] }
-TupleElement  : WeakVariable                                              { TupleValue $1 (exprPosition $1) }
-              | TupleList                                                 { $1 }
+TupleElement  : Expr                                                      { TupleValue $1 (exprPosition $1) }
                   
 Btype         : typename                                                  { Btype (name $1) (tokPosition $1) }
 Etype         : lcurly EtypeHelper rcurly amp Etype                       { $2 ++ $5 }

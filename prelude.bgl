@@ -2,7 +2,6 @@
 type Player = {A,B}
 type State = (Board,Player)
 
-
 -- Players
 --
 goFirst : Player
@@ -15,10 +14,11 @@ next(p) = if p == A then B else A
 -- Initial board and board operations
 --
 initialBoard : Board
-initialBoard(x,y) = Empty
+initialBoard ! (x, y) = Empty
+initialBoard ! (1, 2) = A
 
 isValid : (Board,Position) -> Bool
-isValid(b,p) = if b!p == Empty then True else False
+isValid(b,p) = if (b ! p) == Empty then True else False
 
 isFull : Board -> Bool
 isFull(b) = countBoard(Empty,b) == 0

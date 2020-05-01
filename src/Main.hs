@@ -29,22 +29,19 @@ main =
         let parsedEitherFile = parse $ file
         let parsedEitherPrelude = parse $ prelude
         
-        case parsedEitherFile of
-            Left err -> putStrLn "Error in boardgame code" >> putStrLn err
-            Right ast -> do
-                -- print ast
-                let (valid, error) = check_start ast in 
-                    if(valid) 
-                        then   writeFile "OutputCode.hs" (compile ast) >> writeFile "OutputBuiltins.hs" (compile_builtin ast)
-                        else   putStrLn error   
         case parsedEitherPrelude of
-            Left err -> putStrLn "Error in prelude" >> putStrLn err
-            Right ast -> do
-                -- print ast
-                let (valid, error) = check_start ast in 
-                    if(valid) 
-                        then appendFile "OutputBuiltins.hs" ("\n\n -- Prelude \n" ++ compile_prelude ast)
-                        else   putStrLn error
+            Left err1 -> putStrLn "Error in prelude" >> putStrLn err1
+            Right ast1 -> case parsedEitherFile of
+                            Left err2 -> putStrLn "Error in boardgame code" >> putStrLn err2
+                            Right ast2 -> let (state1, valid1, error1) = check_start_prelude ast1 in 
+                                            if(valid1) 
+                                                then let (valid2, error2) = check_start ast2 state1 in 
+                                                         if(valid2) 
+                                                            then do 
+                                                                writeFile "OutputCode.hs" (compile ast2) >> writeFile "OutputBuiltins.hs" (compile_builtin ast2)
+                                                                appendFile "OutputBuiltins.hs" ("\n\n -- Prelude \n" ++ compile_prelude ast1)
+                                                            else putStrLn error2
+                                                else   putStrLn error1 
 
         -- let (valid, error) = check_start(ast)
         -- putStrLn error

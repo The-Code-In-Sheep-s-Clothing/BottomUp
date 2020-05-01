@@ -89,7 +89,7 @@ compile_stmt f (SExpr (ESymbol e _) _) = do
             return (f ++ "Con " ++ e)
     else
         return (e)
-compile_stmt f (SExpr e _) = return (compile_expr e)
+compile_stmt f (SExpr e _) = compile_expr_state e
 compile_stmt _ (Typedef s t p) = compile_typedef (Typedef s t p)
 compile_stmt _ (TypedefFunc s e t p) = compile_typedef (TypedefFunc s e t p)
 compile_stmt _ (Valdef s e p) = compile_valdef (Valdef s e p) <++ "\n"
@@ -229,8 +229,6 @@ add_content_to_state (Ptype' (Xtype' (Xtype b l _) _) _) = do
 -- TODO: Should this be possible?
 add_content_to_state _ = return "Not Possible"
 
-
-
 compile_ttype :: Ttype -> StateRet
 compile_ttype (Ttype x _) = "(" ++> (intercalateM "," (map compile_ptype x)) <++ ")"
 
@@ -241,6 +239,10 @@ compile_btype (Btype b _) = b
 compile_tuple :: Tuple -> String
 compile_tuple (TupleList t _) = "(" ++ intercalate "," (map compile_tuple t) ++ ")"
 compile_tuple (TupleValue t _) = compile_expr t
+
+compile_tuple_state :: Tuple -> StateRet
+compile_tuple_state (TupleList t _) = "(" ++> (intercalateM "," (map compile_tuple_state t)) <++ ")"
+compile_tuple_state (TupleValue t _) = compile_expr_state t
 
 compile_expr :: Expr -> String
 compile_expr (EInt i _) = show i
@@ -265,6 +267,23 @@ loop_expr_func (e:es) =
         "(" ++ compile_expr e ++ ")"
     else
         "(" ++ compile_expr e ++ ") " ++ loop_expr_func es
+
+compile_expr_state :: Expr -> StateRet
+compile_expr_state (ETuple t _) = compile_tuple_state t
+compile_expr_state eo@(FunctionApp s t@(ETuple e@(TupleList l x1) x2) x3) 
+    | s == "place" =  do
+        cur_state <- get
+        let f = "Content"
+        if elem f (map (\(a,_,_) -> a) cur_state) then
+            if elem (compile_tuple (head l)) (get_state_xtypes f cur_state) then
+                return (compile_expr eo)
+            else
+                let new_list = ((TupleValue (ESymbol (f ++ "Con " ++ compile_tuple (head l)) x1) x1) : (tail l)) in
+                    return (compile_expr (FunctionApp s (ETuple (TupleList new_list x1) x2) x3))
+        else
+            return (compile_expr eo)
+    | otherwise = return (compile_expr eo)
+compile_expr_state e = return (compile_expr e)
 
 compile_binop :: Binop -> String
 compile_binop (Plus _ ) = "+"

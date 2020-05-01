@@ -71,12 +71,12 @@ builtin_funcs = [
     "maxCol :: Board -> Int\n\
     \maxCol = snd . size",
 
-    "place :: (Player, Board, Position) -> Board\n\
+    "place :: (Content, Board, Position) -> Board\n\
     \place (p, b, pos) = unsafePerformIO $ place_wrapper (p, b, pos)",
 
-    "place_wrapper :: (Player, Board, Position) -> IO Board\n\
+    "place_wrapper :: (Content, Board, Position) -> IO Board\n\
     \place_wrapper (p, b, pos) = \n\
-    \   let new_board = (b // [(pos, ContentCon p)]) in do\n\
+    \   let new_board = (b // [(pos, p)]) in do\n\
     \       putStrLn $ printBoard new_board\n\
     \       return (new_board)",
 

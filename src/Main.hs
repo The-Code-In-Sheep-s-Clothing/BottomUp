@@ -32,7 +32,7 @@ main =
         case parsedEitherFile of
             Left err -> putStrLn "Error in boardgame code" >> putStrLn err
             Right ast -> do
-                -- print ast
+                print ast
                 let (valid, error) = check_start ast in 
                     if(valid) 
                         then   writeFile "OutputCode.hs" (compile ast) >> writeFile "OutputBuiltins.hs" (compile_builtin ast)

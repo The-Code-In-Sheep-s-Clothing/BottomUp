@@ -283,7 +283,11 @@ compile_expr_state eo@(FunctionApp s t@(ETuple e@(TupleList l x1) x2) x3)
         else
             return (compile_expr eo)
     | otherwise = return (compile_expr eo)
-compile_expr_state (ESymbol e _) = do
+compile_expr_state (Infix e1 b e2 _) = compile_expr_state_binop e1 <++> (compile_binop b ++> compile_expr_state_binop e2)
+compile_expr_state e = return (compile_expr e)
+
+compile_expr_state_binop :: Expr -> StateRet
+compile_expr_state_binop (ESymbol e _) = do
     cur_state <- get
     let f = "Content"
     if elem f (map (\(a,_,_) -> a) cur_state) then
@@ -293,8 +297,7 @@ compile_expr_state (ESymbol e _) = do
             return (f ++ "Con " ++ e)
     else
         return (e)
-compile_expr_state (Infix e1 b e2 _) = compile_expr_state e1 <++> (compile_binop b ++> compile_expr_state e2)
-compile_expr_state e = return (compile_expr e)
+compile_expr_state_binop _ = return ""
 
 compile_binop :: Binop -> String
 compile_binop (Plus _ ) = "+"

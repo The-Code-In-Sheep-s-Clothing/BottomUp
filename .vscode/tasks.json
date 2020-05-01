@@ -6,7 +6,7 @@
         {
             "label": "Build",
             "type": "shell",
-            "command": "cabal configure && cabal build",
+            "command": "cabal new-configure && cabal new-build",
             "options": {
                 "cwd": "${workspaceFolder}"
             },

@@ -5,22 +5,23 @@ imports = [
     "import Data.List",
     "import System.IO.Unsafe",
     "import Data.Char",
-    "import System.IO"]
+    "import System.IO",
+    "import Text.ParserCombinators.Parsec"]
 
 builtin_types = [
     "data Grid = Array (Int, Int) deriving Show",
+    "data Player = A | B deriving (Show, Eq)",
     "type Board = Array (Int, Int) Content",
     "type Position = (Int, Int)",
     "type Row = [Content]",
     "type BoardProperty = Board -> Bool"]
 
 input_funcs = [
-    "input :: Int -> ({input_type})\n\
-    \input _ = unsafePerformIO $ getInts 0",
-
-    "getInts :: Int -> IO ({input_type})\n\
-    \getInts _ = do\n\
-    \   return ({getInts})"]
+    "input :: Int -> Input\n\
+    \input _ = \n\
+    \    case parse check_input \"\" (unsafePerformIO $ getLine) of\n\
+    \        Left err -> input 0\n\
+    \        Right i -> i"]
 
 builtin_funcs = [
     "board :: (Int,Int) -> Content -> Board\n\

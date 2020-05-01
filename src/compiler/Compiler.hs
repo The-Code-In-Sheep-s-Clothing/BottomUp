@@ -54,7 +54,8 @@ compile_builtin x = "module OutputBuiltins where\n" ++ compile_imports ++ compil
 
 find_compile_input_funcs :: [Stmt] -> String
 find_compile_input_funcs [] = "" 
-find_compile_input_funcs ((Typedef "Input" t _):xs) = compile_input_funcs t
+find_compile_input_funcs ((Typedef "Input" t _):xs) = let (res, st) = runState (compile_type t) [] in
+    "type Input = " ++ res ++ "\n" ++ compile_input_funcs2 t
 find_compile_input_funcs (x:xs) = find_compile_input_funcs xs
 
 compile_state :: Env -> String
@@ -135,7 +136,8 @@ compile_typedef :: Stmt -> StateRet
 compile_typedef (TypedefFunc "Board" e t _) = 
     add_content_to_state t <++ 
     ("board_size = " ++ compile_expr e)
-compile_typedef (Typedef "Input" t _) = "type Input = " ++> compile_type t <++ "\n"
+-- compile_typedef (Typedef "Input" t _) = "type Input = " ++> compile_type t <++ "\n"
+compile_typedef (Typedef "Input" t _) = return ""
 compile_typedef (Typedef s (Ptype' (Ttype' t _) _) _) = 
     ("type " ++ s ++ " = ") ++> compile_ttype t
 compile_typedef (Typedef s (Ptype' (Xtype' (Xtype b [] _) _) _) _) = 
@@ -153,6 +155,24 @@ compile_input_funcs t = let x = (intercalate "," (["Int" | x <- [1..count_tuple_
     strReplace "{input_type}" x (input_funcs!!0) ++ "\n\n" ++ 
     let y = (intercalate "," (["unsafePerformIO getInt" | x <- [1..count_tuple_type t]])) in
         strReplace "{getInts}" y (strReplace "{input_type}" x (input_funcs!!1))
+
+compile_input_funcs2 :: Type -> String
+compile_input_funcs2 t = "-- Input functions\n" ++ (intercalate "\n\n" input_funcs) ++ "\n\n" ++
+    "check_input :: GenParser Char st Input\n" ++
+    "check_input = do\n" ++
+    "char \'(\'\n" ++
+    read_int_tuple ((count_tuple_type t) - 1) ++
+    "s0 <- many digit\n" ++
+    "char \')\'\n" ++
+    "return (" ++ return_int_tuple ((count_tuple_type t) - 1) ++ "read s0::Int)"
+
+read_int_tuple :: Int -> String
+read_int_tuple 0 = ""
+read_int_tuple i = "s" ++ show i ++ " <- " ++ "many digit\nchar \',\'\n" ++ (read_int_tuple $ i-1)
+
+return_int_tuple :: Int -> String
+return_int_tuple 0 = ""
+return_int_tuple i = "read s" ++ show i ++ "::Int,"
 
 count_tuple_type :: Type -> Int
 count_tuple_type (Ptype' (Xtype' (Xtype (Btype "Position" _) [] _) _) _) = 2

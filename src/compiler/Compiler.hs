@@ -283,6 +283,17 @@ compile_expr_state eo@(FunctionApp s t@(ETuple e@(TupleList l x1) x2) x3)
         else
             return (compile_expr eo)
     | otherwise = return (compile_expr eo)
+compile_expr_state (ESymbol e _) = do
+    cur_state <- get
+    let f = "Content"
+    if elem f (map (\(a,_,_) -> a) cur_state) then
+        if elem e (get_state_xtypes f cur_state) then
+            return (e)
+        else
+            return (f ++ "Con " ++ e)
+    else
+        return (e)
+compile_expr_state (Infix e1 b e2 _) = compile_expr_state e1 <++> (compile_binop b ++> compile_expr_state e2)
 compile_expr_state e = return (compile_expr e)
 
 compile_binop :: Binop -> String

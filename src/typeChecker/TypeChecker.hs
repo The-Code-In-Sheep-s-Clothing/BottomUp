@@ -743,13 +743,13 @@ full_type_to_str fstr (Tpl []) st = (st, Tpl [], True, "")
 
 check_func_values :: [String] -> [BaseType] -> State -> (State, Bool, String)
 check_func_values (x:xs) b (State fs ts) = if(exists_in fs x)
-                                                then let [Fdef _ _ t] = trace x (lookup5 fs x)
+                                                then let [Fdef _ _ t] = (lookup5 fs x)
                                                          in if(type_comp t (Dbl b) (State fs ts))
                                                                 then (State fs ts, True, "")
                                                                 else (State fs ts, False, "Value " ++ x ++ " used in two different type definitions: " ++ (t_to_s (Dbl b)) ++ " and " ++ (t_to_s t) ++ "\n")
                                                 else if(or (map ((==) x) xs))
                                                                 then (State fs ts, False, "value " ++ x ++ ": type cannot be expanded by the same value twice\n")
-                                                                else trace ("womp\n" ++ x) (check_func_values xs b (State ([Fdef x (Sgl Em) (Dbl b)] ++ fs) ts))
+                                                                else (check_func_values xs b (State ([Fdef x (Sgl Em) (Dbl b)] ++ fs) ts))
 check_func_values [] b st = (st, True, "")                                                                
 
 

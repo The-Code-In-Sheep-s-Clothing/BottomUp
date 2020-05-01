@@ -5,22 +5,23 @@ imports = [
     "import Data.List",
     "import System.IO.Unsafe",
     "import Data.Char",
-    "import System.IO"]
+    "import System.IO",
+    "import Text.ParserCombinators.Parsec"]
 
 builtin_types = [
     "data Grid = Array (Int, Int) deriving Show",
+    "data Player = A | B deriving (Show, Eq)",
     "type Board = Array (Int, Int) Content",
     "type Position = (Int, Int)",
     "type Row = [Content]",
     "type BoardProperty = Board -> Bool"]
 
 input_funcs = [
-    "input :: Int -> ({input_type})\n\
-    \input _ = unsafePerformIO $ getInts 0",
-
-    "getInts :: Int -> IO ({input_type})\n\
-    \getInts _ = do\n\
-    \   return ({getInts})"]
+    "input :: Int -> Input\n\
+    \input _ = \n\
+    \    case parse check_input \"\" (unsafePerformIO $ getLine) of\n\
+    \        Left err -> input 0\n\
+    \        Right i -> i"]
 
 builtin_funcs = [
     "board :: (Int,Int) -> Content -> Board\n\
@@ -70,12 +71,12 @@ builtin_funcs = [
     "maxCol :: Board -> Int\n\
     \maxCol = snd . size",
 
-    "place :: (Player, Board, Position) -> Board\n\
+    "place :: (Content, Board, Position) -> Board\n\
     \place (p, b, pos) = unsafePerformIO $ place_wrapper (p, b, pos)",
 
-    "place_wrapper :: (Player, Board, Position) -> IO Board\n\
+    "place_wrapper :: (Content, Board, Position) -> IO Board\n\
     \place_wrapper (p, b, pos) = \n\
-    \   let new_board = (b // [(pos, ContentCon p)]) in do\n\
+    \   let new_board = (b // [(pos, p)]) in do\n\
     \       putStrLn $ printBoard new_board\n\
     \       return (new_board)",
 

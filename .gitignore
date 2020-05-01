@@ -13,3 +13,4 @@ dist-newstyle
 dist-newstyle/*
 *.local
 *.local~
+*.ghc*

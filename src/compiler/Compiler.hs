@@ -54,7 +54,8 @@ compile_builtin x = "module OutputBuiltins where\n" ++ compile_imports ++ compil
 
 find_compile_input_funcs :: [Stmt] -> String
 find_compile_input_funcs [] = "" 
-find_compile_input_funcs ((Typedef "Input" t _):xs) = compile_input_funcs t
+find_compile_input_funcs ((Typedef "Input" t _):xs) = let (res, st) = runState (compile_type t) [] in
+    "type Input = " ++ res ++ "\n" ++ compile_input_funcs2 t
 find_compile_input_funcs (x:xs) = find_compile_input_funcs xs
 
 compile_state :: Env -> String
@@ -88,7 +89,7 @@ compile_stmt f (SExpr (ESymbol e _) _) = do
             return (f ++ "Con " ++ e)
     else
         return (e)
-compile_stmt f (SExpr e _) = return (compile_expr e)
+compile_stmt f (SExpr e _) = compile_expr_state e
 compile_stmt _ (Typedef s t p) = compile_typedef (Typedef s t p)
 compile_stmt _ (TypedefFunc s e t p) = compile_typedef (TypedefFunc s e t p)
 compile_stmt _ (Valdef s e p) = compile_valdef (Valdef s e p) <++ "\n"
@@ -135,7 +136,8 @@ compile_typedef :: Stmt -> StateRet
 compile_typedef (TypedefFunc "Board" e t _) = 
     add_content_to_state t <++ 
     ("board_size = " ++ compile_expr e)
-compile_typedef (Typedef "Input" t _) = "type Input = " ++> compile_type t <++ "\n"
+-- compile_typedef (Typedef "Input" t _) = "type Input = " ++> compile_type t <++ "\n"
+compile_typedef (Typedef "Input" t _) = return ""
 compile_typedef (Typedef s (Ptype' (Ttype' t _) _) _) = 
     ("type " ++ s ++ " = ") ++> compile_ttype t
 compile_typedef (Typedef s (Ptype' (Xtype' (Xtype b [] _) _) _) _) = 
@@ -153,6 +155,24 @@ compile_input_funcs t = let x = (intercalate "," (["Int" | x <- [1..count_tuple_
     strReplace "{input_type}" x (input_funcs!!0) ++ "\n\n" ++ 
     let y = (intercalate "," (["unsafePerformIO getInt" | x <- [1..count_tuple_type t]])) in
         strReplace "{getInts}" y (strReplace "{input_type}" x (input_funcs!!1))
+
+compile_input_funcs2 :: Type -> String
+compile_input_funcs2 t = "-- Input functions\n" ++ (intercalate "\n\n" input_funcs) ++ "\n\n" ++
+    "check_input :: GenParser Char st Input\n" ++
+    "check_input = do\n" ++
+    "char \'(\'\n" ++
+    read_int_tuple ((count_tuple_type t) - 1) ++
+    "s0 <- many digit\n" ++
+    "char \')\'\n" ++
+    "return (" ++ return_int_tuple ((count_tuple_type t) - 1) ++ "read s0::Int)"
+
+read_int_tuple :: Int -> String
+read_int_tuple 0 = ""
+read_int_tuple i = "s" ++ show i ++ " <- " ++ "many digit\nchar \',\'\n" ++ (read_int_tuple $ i-1)
+
+return_int_tuple :: Int -> String
+return_int_tuple 0 = ""
+return_int_tuple i = "read s" ++ show i ++ "::Int,"
 
 count_tuple_type :: Type -> Int
 count_tuple_type (Ptype' (Xtype' (Xtype (Btype "Position" _) [] _) _) _) = 2
@@ -209,8 +229,6 @@ add_content_to_state (Ptype' (Xtype' (Xtype b l _) _) _) = do
 -- TODO: Should this be possible?
 add_content_to_state _ = return "Not Possible"
 
-
-
 compile_ttype :: Ttype -> StateRet
 compile_ttype (Ttype x _) = "(" ++> (intercalateM "," (map compile_ptype x)) <++ ")"
 
@@ -221,6 +239,10 @@ compile_btype (Btype b _) = b
 compile_tuple :: Tuple -> String
 compile_tuple (TupleList t _) = "(" ++ intercalate "," (map compile_tuple t) ++ ")"
 compile_tuple (TupleValue t _) = compile_expr t
+
+compile_tuple_state :: Tuple -> StateRet
+compile_tuple_state (TupleList t _) = "(" ++> (intercalateM "," (map compile_tuple_state t)) <++ ")"
+compile_tuple_state (TupleValue t _) = compile_expr_state t
 
 compile_expr :: Expr -> String
 compile_expr (EInt i _) = show i
@@ -245,6 +267,23 @@ loop_expr_func (e:es) =
         "(" ++ compile_expr e ++ ")"
     else
         "(" ++ compile_expr e ++ ") " ++ loop_expr_func es
+
+compile_expr_state :: Expr -> StateRet
+compile_expr_state (ETuple t _) = compile_tuple_state t
+compile_expr_state eo@(FunctionApp s t@(ETuple e@(TupleList l x1) x2) x3) 
+    | s == "place" =  do
+        cur_state <- get
+        let f = "Content"
+        if elem f (map (\(a,_,_) -> a) cur_state) then
+            if elem (compile_tuple (head l)) (get_state_xtypes f cur_state) then
+                return (compile_expr eo)
+            else
+                let new_list = ((TupleValue (ESymbol (f ++ "Con " ++ compile_tuple (head l)) x1) x1) : (tail l)) in
+                    return (compile_expr (FunctionApp s (ETuple (TupleList new_list x1) x2) x3))
+        else
+            return (compile_expr eo)
+    | otherwise = return (compile_expr eo)
+compile_expr_state e = return (compile_expr e)
 
 compile_binop :: Binop -> String
 compile_binop (Plus _ ) = "+"

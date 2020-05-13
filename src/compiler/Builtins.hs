@@ -10,7 +10,6 @@ imports = [
 
 builtin_types = [
     "data Grid = Array (Int, Int) deriving Show",
-    "data Player = A | B deriving (Show, Eq)",
     "type Board = Array (Int, Int) Content",
     "type Position = (Int, Int)",
     "type Row = [Content]",
@@ -80,24 +79,14 @@ builtin_funcs = [
     \       putStrLn $ printBoard new_board\n\
     \       return (new_board)",
 
-    "next :: Player -> Player\n\
-    \next A = B\n\
-    \next B = A",
-
     "while :: (t -> Bool) -> (t -> t) -> t -> t\n\
     \while cond exe v = if (cond) v then while cond exe (exe v) else v",
 
-    "getInt :: IO Int\n\
-    \getInt = do\n\
-    \   hFlush stdout\n\
-    \   i <- getLine\n\
-    \   return $ read i",
-
     "modifyElement :: (Int, Int) -> Content -> Board -> Board\n\
-     \modifyElement (x, y) c b = b // [((x,y), c)]",
+    \modifyElement (x, y) c b = b // [((x,y), c)]",
 
     "modifyRow :: Int -> Content -> Board -> Board\n\
-     \modifyRow x c b= modifyRowHelper b (x, 1) (numRows (bounds b)) c",
+    \modifyRow x c b= modifyRowHelper b (x, 1) (numRows (bounds b)) c",
 
     "modifyRowHelper :: Board -> (Int, Int) -> Int -> Content -> Board\n\
     \modifyRowHelper b (x, y) max c = if (y <= max) then modifyElement (x, y) c (modifyRowHelper b (x, y+1) max c) else b",
@@ -116,6 +105,9 @@ builtin_funcs = [
 
     "gridSize :: Grid -> (Int, Int)\n\
     \gridSize (Array (x, y)) = (x, y)",
+
+    "countBoard :: (Content, Board) -> Int\n\
+    \countBoard (c, b) = sum [1 | xs <- (allRows b), x <- xs, c == x]",
 
     "byRows :: [[Content]] -> Board\n\
     \byRows rows = listArray ((1,1),size) (concat (reverse rows))\n\
@@ -156,7 +148,4 @@ builtin_funcs = [
     \extraSpaces m l = if (m == l) then \"\" else \" \" ++ extraSpaces (m+1) l",
 
     "open :: Board -> [Position]\n\
-    \open g = [p | (p,v) <- assocs g, v==Empty]",
-
-    "isFull :: BoardProperty\n\
-    \isFull = null . open"]
+    \open g = [p | (p,v) <- assocs g, v==Empty]"]

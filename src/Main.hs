@@ -38,8 +38,9 @@ main =
                                                 then let (valid2, error2) = check_start ast2 state1 in 
                                                          if(valid2) 
                                                             then do 
-                                                                writeFile "OutputCode.hs" (compile ast2) >> writeFile "OutputBuiltins.hs" (compile_builtin ast2)
-                                                                appendFile "OutputBuiltins.hs" ("\n\n -- Prelude \n" ++ compile_prelude ast1)
+                                                                let (s, e) = compile ast2 in do
+                                                                    writeFile "OutputCode.hs" s >> writeFile "OutputBuiltins.hs" (compile_builtin ast2)
+                                                                    appendFile "OutputBuiltins.hs" ("\n\n -- Prelude \n" ++ compile_prelude ast1 e)
                                                             else putStrLn error2
                                                 else   putStrLn error1 
 

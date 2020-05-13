@@ -37,13 +37,12 @@ compile_builtin_funcs :: Env -> String
 compile_builtin_funcs st = "-- Builtin functions\n" ++ (intercalate "\n\n" builtin_funcs)
 
 -- Compilation code from AST
-compile :: [Stmt] -> String
+compile :: [Stmt] -> (String, Env)
+compile x = let (res, st) = runState (compile_stmts x) [] in 
+    ("import OutputBuiltins\nimport Data.Array\nimport System.IO.Unsafe" ++ compile_state st ++ "\n" ++ res, st)
 
-compile x = "import OutputBuiltins\nimport Data.Array\nimport System.IO.Unsafe" ++ let (res, st) = runState (compile_stmts x) [] in 
-    compile_state st ++ "\n" ++ res
-
-compile_prelude :: [Stmt] -> String
-compile_prelude x = let (res, st) = runState (compile_stmts x) [] in res
+compile_prelude :: [Stmt] -> Env -> String
+compile_prelude x e = let (res, st) = runState (compile_stmts x) e in compile_state_no_dup st e  ++ compile_board_size st ++ "\n" ++ res
 
 compile_builtin :: [Stmt] -> String
 compile_builtin x = "module OutputBuiltins where\n" ++ compile_imports ++ compile_builtin_types ++
@@ -61,6 +60,15 @@ find_compile_input_funcs (x:xs) = find_compile_input_funcs xs
 compile_state :: Env -> String
 compile_state e = intercalate "\n" (map compile_single_state e) ++ "\n"
 
+compile_state_no_dup :: Env -> Env -> String
+compile_state_no_dup st1 st2 = intercalate "\n" (map compile_single_state (st1 \\ st2)) ++ "\n"
+
+compile_board_size :: Env -> String
+compile_board_size ((s,c,l):es) = if (s == "board_size") then
+    "board_size = " ++ c ++ "\n"
+    else
+        compile_board_size es
+
 compile_content_state :: Env -> String
 compile_content_state ((s,c,l):es) = if (s == "Content") then
     "data " ++ s ++ " = " ++ s ++ "Con " ++ 
@@ -71,6 +79,7 @@ compile_content_state ((s,c,l):es) = if (s == "Content") then
 
 compile_single_state :: (String, String, [String]) -> String
 compile_single_state ("Content", c, l) = ""
+compile_single_state ("board_size", c, l) = ""
 compile_single_state (s, c, l) = "data " ++ s ++ " = " ++ s ++ "Con " ++ 
     c ++ "|" ++ intercalate " | " l ++
     " deriving (Show, Eq)"
@@ -104,12 +113,10 @@ while_compose (FunctionApp f e _) = "." ++ f ++ while_compose e
 while_compose _ = ""
 
 -- Function type definition
--- TODO accept different types of arguments for initialBoard
 compile_valdef :: Stmt -> StateRet
 compile_valdef (Valdef (Signature name t _) ((ArrayEquation s e st _):es) _) =
     ((name ++ " :: " ) ++> compile_type t ) <++ ("\n" ++
     s ++ " =") <++> (compile_boardequ es) <++ "board (gridSize board_size) " <++> (compile_stmt "" st) <++ (parenList es)
-
 compile_valdef (Valdef (Signature s t _) e _) = 
     (s ++ " :: ") ++> compile_type t <++ "\n" <++> (intercalateM "\n" (map (compile_equation (get_return_type t)) e))
 
@@ -134,8 +141,7 @@ compile_equation f (ArrayEquation s e st _) = (s ++ " " ++ compile_expr e ++ "="
 -- Type/data declarations (bo/equationard, input)
 compile_typedef :: Stmt -> StateRet
 compile_typedef (TypedefFunc "Board" e t _) = 
-    add_content_to_state t <++ 
-    ("board_size = " ++ compile_expr e)
+    add_content_to_state t >> add_board_size_to_state e >> return ""
 -- compile_typedef (Typedef "Input" t _) = "type Input = " ++> compile_type t <++ "\n"
 compile_typedef (Typedef "Input" t _) = return ""
 compile_typedef (Typedef s (Ptype' (Ttype' t _) _) _) = 
@@ -143,32 +149,25 @@ compile_typedef (Typedef s (Ptype' (Ttype' t _) _) _) =
 compile_typedef (Typedef s (Ptype' (Xtype' (Xtype b [] _) _) _) _) = 
     return (("type " ++ s ++ " = ") ++ compile_btype b)
 compile_typedef (Typedef s (Ptype' (Xtype' (Etype l ep) _) _) _) = 
-    ("data " ++ s ++ " = ") ++> (compile_xtype (Etype l ep))
+    ("data " ++ s ++ " = ") ++> (compile_xtype (Etype l ep)) <++ " deriving (Eq, Show)"
 compile_typedef (Typedef s (Ptype' (Xtype' x@(Xtype b l _) _) _) _) = 
     compile_xtype_named x s >> return ""
 -- This is impossible, all possible cases are captured above
 compile_typedef _ = return ""
 
--- Compiles in the input functions, replacing the types with the correct tuple
-compile_input_funcs :: Type -> String
-compile_input_funcs t = let x = (intercalate "," (["Int" | x <- [1..count_tuple_type t]])) in
-    strReplace "{input_type}" x (input_funcs!!0) ++ "\n\n" ++ 
-    let y = (intercalate "," (["unsafePerformIO getInt" | x <- [1..count_tuple_type t]])) in
-        strReplace "{getInts}" y (strReplace "{input_type}" x (input_funcs!!1))
-
 compile_input_funcs2 :: Type -> String
 compile_input_funcs2 t = "-- Input functions\n" ++ (intercalate "\n\n" input_funcs) ++ "\n\n" ++
     "check_input :: GenParser Char st Input\n" ++
     "check_input = do\n" ++
-    "char \'(\'\n" ++
+    "    char \'(\'\n" ++ "    " ++
     read_int_tuple ((count_tuple_type t) - 1) ++
-    "s0 <- many digit\n" ++
-    "char \')\'\n" ++
-    "return (" ++ return_int_tuple ((count_tuple_type t) - 1) ++ "read s0::Int)"
+    "    s0 <- many digit\n" ++
+    "    char \')\'\n" ++
+    "    return (" ++ return_int_tuple ((count_tuple_type t) - 1) ++ "read s0::Int)"
 
 read_int_tuple :: Int -> String
 read_int_tuple 0 = ""
-read_int_tuple i = "s" ++ show i ++ " <- " ++ "many digit\nchar \',\'\n" ++ (read_int_tuple $ i-1)
+read_int_tuple i = "s" ++ show i ++ " <- " ++ "many digit\n    char \',\'\n" ++ (read_int_tuple $ i-1)
 
 return_int_tuple :: Int -> String
 return_int_tuple 0 = ""
@@ -229,6 +228,12 @@ add_content_to_state (Ptype' (Xtype' (Xtype b l _) _) _) = do
 -- TODO: Should this be possible?
 add_content_to_state _ = return "Not Possible"
 
+add_board_size_to_state :: Expr -> StateRet
+add_board_size_to_state e = do
+    cur_state <- get
+    put (cur_state ++ [("board_size", compile_expr e, [])])
+    return ""
+
 compile_ttype :: Ttype -> StateRet
 compile_ttype (Ttype x _) = "(" ++> (intercalateM "," (map compile_ptype x)) <++ ")"
 
@@ -283,7 +288,7 @@ compile_expr_state eo@(FunctionApp s t@(ETuple e@(TupleList l x1) x2) x3)
         else
             return (compile_expr eo)
     | otherwise = return (compile_expr eo)
-compile_expr_state (Infix e1 b e2 _) = compile_expr_state_binop e1 <++> (compile_binop b ++> compile_expr_state_binop e2)
+compile_expr_state (Infix e1 b e2 _) = compile_expr_state_binop e1 <++> ((compile_binop b) ++> compile_expr_state_binop e2)
 compile_expr_state e = return (compile_expr e)
 
 compile_expr_state_binop :: Expr -> StateRet
@@ -297,7 +302,7 @@ compile_expr_state_binop (ESymbol e _) = do
             return (f ++ "Con " ++ e)
     else
         return (e)
-compile_expr_state_binop _ = return ""
+compile_expr_state_binop e = return (compile_expr e)
 
 compile_binop :: Binop -> String
 compile_binop (Plus _ ) = "+"

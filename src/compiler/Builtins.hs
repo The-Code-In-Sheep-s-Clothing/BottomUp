@@ -44,6 +44,20 @@ builtin_funcs = [
     "cols :: Board -> [Row]\n\
     \cols b = [col b c | c <- [1..maxCol b]]",
 
+    "countColumn :: (Board, Player, Int) -> Int\n\
+    \countColumn (b, c, y) = countColumnHelp b (numRows (bounds b)) y (ContentCon c)",
+
+    "countColumnHelp :: Board -> Int -> Int -> Content -> Int\n\
+    \countColumnHelp b 0 y c  = 0\n\
+    \countColumnHelp b x y c = (if(b!(x,y) == c) then 1 else 0 ) + countColumnHelp b (x-1) y c",
+
+    "countRow :: (Board, Player, Int) -> Int\n\
+    \countRow (b, c, x) = countRowHelp b x (numCols (bounds b)) (ContentCon c)",
+
+    "countRowHelp :: Board -> Int -> Int -> Content -> Int\n\
+    \countRowHelp b x 0 c  = 0\n\
+    \countRowHelp b x y c = (if(b!(x,y) == c) then 1 else 0) + countRowHelp b x (y-1) c",
+
     "diagsUp :: Board -> (Int,Int) -> Row\n\
     \diagsUp b (y,x) | y > maxRow b || x > maxCol b = []\n\
     \                | otherwise = b!(y,x):diagsUp b (y+1,x+1)",

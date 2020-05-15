@@ -1,9 +1,6 @@
---working on builtins that are needed
-type Board = Array(5,5) of Player & { Empty }
+--tests builtins
+type Board = Array(3,3) of Player & { Empty }
 type Input = Position
-
-threeInARow : Board -> Bool
-threeInARow(b) = or(inARow(3,A,b),inARow(3,B,b))
 
 loop : (Board,Player) -> (Board,Player)
 loop(b,p) = while not(gameOver(b,p)) do tryMove(b,p)
@@ -17,13 +14,13 @@ outcome(b,p) = if (maxCount(b, A) > maxCount(b, B))
 		then A else if (maxCount(b, B) > maxCount(b, A)) then B else Tie
 
 maxCount : (Board, Player) -> Int
-maxCount(b, p) = maxInt(colCount(b, p, 5), rowCount(b, p, 5))
+maxCount(b, p) = maxInt(colCount(b, p, 3), rowCount(b, p, 3))
 
 colCount : (Board, Player, Int) -> Int
-colCount(b, p, col) = if col == 0 then 0 else maxInt(countColumn(b, p), colCount(b, p, col-1))
+colCount(b, p, col) = if col == 0 then 0 else maxInt(countColumn(b, p, col), colCount(b, p, col-1))
 
 rowCount : (Board, Player, Int) -> Int
-rowCount(b, p, row) = if row == 0 then 0 else maxInt(countRow(b, p), rowCount(b, p, row-1))
+rowCount(b, p, row) = if row == 0 then 0 else maxInt(countRow(b, p, row), rowCount(b, p, row-1))
 
 maxInt : (Int, Int) -> Int
 maxInt(a, b) = if (a < b) then b else a

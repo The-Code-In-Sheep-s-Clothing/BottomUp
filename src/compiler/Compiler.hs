@@ -159,7 +159,7 @@ compile_input_funcs2 :: Type -> String
 compile_input_funcs2 t = "-- Input functions\n" ++ (intercalate "\n\n" input_funcs) ++ "\n\n" ++
     "check_input :: GenParser Char st Input\n" ++
     "check_input = do\n" ++
-    "    char \'(\'\n" ++ "    " ++
+    "    char \'(\'\n" ++
     read_int_tuple ((count_tuple_type t) - 1) ++
     "    s0 <- many digit\n" ++
     "    char \')\'\n" ++
@@ -167,7 +167,7 @@ compile_input_funcs2 t = "-- Input functions\n" ++ (intercalate "\n\n" input_fun
 
 read_int_tuple :: Int -> String
 read_int_tuple 0 = ""
-read_int_tuple i = "s" ++ show i ++ " <- " ++ "many digit\n    char \',\'\n" ++ (read_int_tuple $ i-1)
+read_int_tuple i = "    s" ++ show i ++ " <- " ++ "many digit\n    char \',\'\n" ++ (read_int_tuple $ i-1)
 
 return_int_tuple :: Int -> String
 return_int_tuple 0 = ""

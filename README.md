@@ -24,8 +24,8 @@
 * ghci OutputCode.hs
 
 ## Windows Executable Execute
-* ./BoGL-Compiler.exe <filename>
-* ghci OutputCode.hs
+* `./BoGL-Compiler.exe <filename>`
+* `ghci OutputCode.hs`
 
 ## GHCi
 Once the compiled program is in GHCi to run it execute the result function. Other functions can be tested, but these will depend on the implementation in the .bgl file.

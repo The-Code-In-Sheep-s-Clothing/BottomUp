@@ -22,9 +22,9 @@ isValid(b,p) = if (b ! p) == Empty then True else False
 isFull : Board -> Bool
 isFull(b) = countBoard(Empty,b) == 0
 
--- Game state operations
---
-tryMove : PState -> PState
+tryMove : (Board, Player) -> (Board, Player)
 tryMove(b,p) = let pos = input in
                    if isValid(b,pos) then (place(p,b,pos),next(p))
                                      else (b,p)
+-- Game state operations
+--

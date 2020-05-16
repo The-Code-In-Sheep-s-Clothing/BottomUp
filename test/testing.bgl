@@ -17,8 +17,6 @@ outcome(b,p) = if inARow(3,A,b) then A else
                if inARow(3,B,b) then B else
                Tie
 
-
-
 play : (Board,Player) -> Player & { Tie }
 play(a,b) = outcome(loop(a,b))
 

@@ -7,10 +7,8 @@ threeInARow(b) = inARow(3,A,b)
 loop : (Board,Player) -> (Board,Player)
 loop(b,p) = while not(gameOver(b,p)) do try(b,p)
 
-try: (Board,Player) -> (Board,Player)
-try(b,p) = let pos = input in
-                   if isValid(b,pos) then (place(A,b,pos),next(p))
-                                     else (b,p)
+try : (Board, Player) -> (Board, Player)
+try(b,p) = tryMove(b, A)
 
 -- Game over function !
 gameOver : (Board ,Player) -> Bool 

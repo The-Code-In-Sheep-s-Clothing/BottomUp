@@ -402,7 +402,9 @@ builtin_state = State  [Fdef "or" (Tpl [[Base "Bool"], [Base "Bool"]]) (Sgl (Bas
                         Fdef "next" (Sgl (Base "Player")) (Sgl (Base "Player")),
                         Fdef "True" (Sgl Em) (Sgl (Base "Bool")),
                         Fdef "False" (Sgl Em) (Sgl (Base "Bool")),
-                        Fdef "countBoard" (Dbl [Base "Input", Base "Board"]) (Sgl (Base "Int"))]  
+                        Fdef "countBoard" (Dbl [Base "Input", Base "Board"]) (Sgl (Base "Int")),
+                        Fdef "countColumn" (Tpl [[Base "Board"], [Base "Player"], [Base "Int"]]) (Sgl (Base "Int")),
+                        Fdef "countRow" (Tpl [[Base "Board"], [Base "Player"], [Base "Int"]]) (Sgl (Base "Int"))]     
                        [Tdef "Bool" (Sgl (Base "Bool")), 
                         Tdef "Int" (Sgl (Base "Int")), 
                         Tdef "Board" (Sgl (Base "Board")), 

@@ -45,14 +45,14 @@ builtin_funcs = [
     \cols b = [col b c | c <- [1..maxCol b]]",
 
     "countColumn :: (Board, Player, Int) -> Int\n\
-    \countColumn (b, c, y) = countColumnHelp b (numRows (bounds b)) y (ContentCon c)",
+    \countColumn (b, c, y) = countColumnHelp b (numCols (bounds b)) y (ContentCon c)",
 
     "countColumnHelp :: Board -> Int -> Int -> Content -> Int\n\
     \countColumnHelp b 0 y c  = 0\n\
     \countColumnHelp b x y c = (if(b!(x,y) == c) then 1 else 0 ) + countColumnHelp b (x-1) y c",
 
     "countRow :: (Board, Player, Int) -> Int\n\
-    \countRow (b, c, x) = countRowHelp b x (numCols (bounds b)) (ContentCon c)",
+    \countRow (b, c, x) = countRowHelp b x (numRows (bounds b)) (ContentCon c)",
 
     "countRowHelp :: Board -> Int -> Int -> Content -> Int\n\
     \countRowHelp b x 0 c  = 0\n\

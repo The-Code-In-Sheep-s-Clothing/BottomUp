@@ -1,3 +1,3 @@
 cabal update
 cabal install
-cabal configure && cabal build
+cabal new-configure && cabal new-build

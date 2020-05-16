@@ -1,4 +1,5 @@
 --tests builtins
+--game ends when board is full, whoever has more of their pieces in any row or column wins
 type Board = Array(3,3) of Player & { Empty }
 type Input = Position
 

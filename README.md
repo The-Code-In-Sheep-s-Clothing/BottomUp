@@ -1,20 +1,23 @@
 # Bottom Up BGL
 
 ## Prerequisites
-* ghc - download the installer
-* cabal - comes with ghc (Might have to be installed manually, package usually called cabal-install)
+* ghc (Most version should work)- download the installer
+* cabal (Versions 2 or 3)- comes with ghc (Might have to be installed manually, package usually called cabal-install)
 
 ## Linux Install
 * ./build.sh
 
 ## Linux Execute
 * ./exec.sh filename
+* Consider running the files testing.bgl, notakto.bgl and countGame1.bgl as they are working test files.
 
 ## Generic Build (For newer cabal versions)
 * cabal v2-build
 
 ## Generic Execute
 * cabal new-exec BottomUp <filename>
+* Consider running the files testing.bgl, notakto.bgl and countGame1.bgl as they are working test files.
+* The command would look like cabal new-exec BottomUp test/testing.bgl
 * ghci OutputCode.hs
 
 ## Windows Executable Execute

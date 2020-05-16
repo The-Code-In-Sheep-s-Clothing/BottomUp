@@ -13,6 +13,7 @@ $capital = [A-Z]
 $lower = [a-z]
 $alphaNumeric = [$alpha $digit \_ \']
 
+-- text converted to lexer tokens
 tokens :-
   $white+                 { mkL LexWhite }
   "--".*                  { mkL LexComment }
@@ -53,7 +54,6 @@ tokens :-
 
 {
 
-
 data AlexUserState = AlexUserState
                    {
                       readInput :: String,
@@ -89,6 +89,7 @@ stripFirstWord (' ':xs) = ""
 stripFirstWord (x:xs)   = x : stripFirstWord xs
 stripFirstWord _        = ""
 
+-- convert lex token to string for errors
 prettyToken                          :: Token -> String
 prettyToken ( TokenComment _ _ )     = "Comment"
 prettyToken ( TokenType _ )          = "type Keyword"
@@ -170,6 +171,7 @@ data Token    = TokenComment      { tokPosition :: AlexPosn, comment :: String }
               | TokenAmp          { tokPosition :: AlexPosn }
               deriving (Eq,Show)
 
+-- convert lex token to parse token
 mkL :: LexClass -> AlexInput -> Int -> Alex Token
 mkL c (p, _, _, str) len = let t = take len str
                           in do
@@ -282,6 +284,7 @@ updatePrevState cont token state = do
   setPrevState state
   cont token
 
+-- makes this LR2
 lexwrap :: (Token -> Alex a) -> Alex a
 lexwrap cont = do
     (pos,_, _, rem_in) <- alexGetInput

@@ -33,5 +33,11 @@ Once the compiled program is in GHCi to run it execute the result function. Othe
 ## VS Code
 There is an automation to build and run the testing file in VS code for development purposes. To run this using VSCode open the folder and then press Ctrl + Shift + B.
 
+## Builtin Functions
+The language has a few important builtin functions.
+* input - get input from user based on Input type
+* inARow : (Int, Player, Board) -> Bool - See if certain number of players on the board
+* countBoard : (Content, Board) -> Int - Count the number of a certain piece on the board
+
 ## Formal Language Definition
 See https://github.com/The-Code-In-Sheep-s-Clothing/Example-DSTL for a formal language definition

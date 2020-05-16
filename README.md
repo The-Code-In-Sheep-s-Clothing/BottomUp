@@ -15,6 +15,8 @@
 
 ## Generic Execute
 * cabal new-exec BottomUp <filename>
+* Consider running the files testing.bgl, notakto.bgl and countGame1.bgl as they are working test files.
+* The command would look like cabal new-exec BottomUp test/testing.bgl
 * ghci OutputCode.hs
 
 ## Windows Executable Execute

@@ -9,6 +9,7 @@
 
 ## Linux Execute
 * ./exec.sh filename
+* Consider running the files testing.bgl, notakto.bgl and countGame1.bgl as they are working test files.
 
 ## Generic Build (For newer cabal versions)
 * cabal v2-build

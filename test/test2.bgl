@@ -1,4 +1,0 @@
-tryMove : (Player,Board) -> (Player,Board)
-tryMove(p,b) = let pos = input in
-                   if isValid(b,pos) then (place(p,b,pos),next(p))
-                                     else (b,p)

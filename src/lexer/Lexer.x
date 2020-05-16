@@ -270,12 +270,18 @@ printError s = do
   ((AlexPn a line col), rem_in, read_in) <- getPrevState
   alexError $ "\n" ++ s ++ showPosn (AlexPn a line col) ++ splitOn "\n" (read_in ++ rem_in) !! (line - 1) ++ "\n" ++ (replicate (col - 2) ' ') ++ "^"
 
+printLexError :: String -> Alex a
+printLexError s = do
+  ((AlexPn a line col),_, _, rem_in) <- alexGetInput
+  read_in <- getLexerReadInputValue
+  alexError $ "\n" ++ s ++ showPosn (AlexPn a line col) ++ splitOn "\n" (read_in ++ rem_in) !! (line - 1) ++ "\n" ++ (replicate (col - 2) ' ') ++ "^"
+
 lexNextToken :: Alex Token
 lexNextToken = do
   next <- alexMonadScan
   setNextToken next
   case next of
-    TokenError posn text -> printError $ "unexpected character " ++ text ++ "\n"
+    TokenError posn text -> printLexError $ "unexpected character " ++ text ++ "\n"
     TokenWhite _ _ -> lexNextToken
     _ -> getNextToken
 

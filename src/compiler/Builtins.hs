@@ -121,7 +121,7 @@ builtin_funcs = [
     \gridSize (Array (x, y)) = (x, y)",
 
     "countBoard :: (Content, Board) -> Int\n\
-    \countBoard (c, b) = sum [1 | xs <- (allRows b), x <- xs, c == x]",
+    \countBoard (c, b) = sum [1 | xs <- (rows b), x <- xs, c == x]",
 
     "byRows :: [[Content]] -> Board\n\
     \byRows rows = listArray ((1,1),size) (concat (reverse rows))\n\

@@ -15,7 +15,7 @@ gameOver : (Board ,Player) -> Bool
 gameOver(b,p) = or(threeInARow(b),isFull(b))
 
 outcome : (Board,Player) -> Player
-outcome(b,p) = p
+outcome(b,p) = if evenPiece(b) then B else A
 
 play : (Board,Player) -> Player 
 play(a,b) = outcome(loop(a,b))

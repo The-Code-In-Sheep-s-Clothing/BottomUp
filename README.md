@@ -1,8 +1,8 @@
 # Bottom Up BGL
 
 ## Prerequisites
-* ghc - download the installer
-* cabal - comes with ghc (Might have to be installed manually, package usually called cabal-install)
+* ghc (Most version should work)- download the installer
+* cabal (Versions 2 or 3)- comes with ghc (Might have to be installed manually, package usually called cabal-install)
 
 ## Linux Install
 * ./build.sh

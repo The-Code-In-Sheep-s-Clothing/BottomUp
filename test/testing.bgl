@@ -1,5 +1,5 @@
 type Board = Array(3,3) of Player & { Empty }
-type Input = Position
+
 
 threeInARow : Board -> Bool
 threeInARow(b) = or(inARow(3,A,b),inARow(3,B,b))

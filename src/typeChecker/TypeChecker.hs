@@ -35,7 +35,7 @@ check_start :: [Stmt] -> State -> (Bool, String)
 check_start [] _ = (True, "")
 check_start x (State fs0 ts0) = let (State fs1 ts1, valid1, error1) = (check_dup_name x (State fs0 ts0)) 
                                     in if(valid1) 
-                                        then let (state2, valid2, error2) =  (check_valid_def_types (State (fs0 ++ fs1) (ts0 ++ ts1)))
+                                        then let (state2, valid2, error2) = (check_valid_def_types (State (fs1) (ts1)))
                                                  in if(valid2)
                                                         then let (valid3, error3) = (check x state2)
                                                                  in (valid3, error3)
@@ -257,7 +257,9 @@ t_to_s2 (Sgl (Sls s)) = s
 t_to_s2 (Dbl [d]) = t_to_s2 (Sgl d)
 t_to_s2 (Dbl (d:ds)) = (t_to_s2 (Sgl d)) ++ " & " ++ (t_to_s2 (Dbl ds))
 t_to_s2 (Tpl ([Tplblk]:ts)) = let (ts1, ts2) = tpl_extract ts
-                                 in "(" ++ ((t_to_s2 (Tpl ts1))) ++ ")," ++ (t_to_s2 (Tpl ts2))
+                                 in if(null ts2)
+                                         then "(" ++ ((t_to_s2 (Tpl ts1))) ++ ")" 
+                                         else "(" ++ ((t_to_s2 (Tpl ts1))) ++ ")," ++ (t_to_s2 (Tpl ts2))
 t_to_s2 (Tpl [t]) = ((t_to_s2 (Dbl t)))                                 
 t_to_s2 (Tpl (t:ts)) = ((t_to_s2 (Dbl t))) ++ "," ++ (t_to_s2 (Tpl ts))
 t_to_s2 (Tpl []) = ""
@@ -313,6 +315,7 @@ tpl_extract (x:xs) = let (b1, b2) = tpl_extract xs
 --Compare tuples. Uses type expantion.
 --if t1 is defined as (t2,t3), (t1,t4) is considered equal to ((t2,t3),t4)
 tpl_comp :: [[BaseType]] -> [[BaseType]] -> State -> Bool
+tpl_comp [] [] _ = True;
 tpl_comp ([Ifblk]:bs1) b2 st = let (bs11, bs12) = if_extract bs1
                                    in (tpl_comp bs11 b2 st) && (tpl_comp bs12 b2 st)
 tpl_comp b1 ([Ifblk]:bs2) st = let (bs21, bs22) = if_extract bs2
@@ -325,10 +328,15 @@ tpl_comp ([Tplblk]:bs1) (bs21:bs22) st = let (bs11, bs12) = tpl_extract bs1
 tpl_comp (bs11:bs12) ([Tplblk]:bs2) st = let (bs21, bs22) = tpl_extract bs2 
                                              in (tpl_comp [bs11] bs21 st) && (tpl_comp bs12 bs22 st) 
 tpl_comp [d1] [d2] st = dbl_comp d1 d2 st
-tpl_comp (d1:ds1) [d2] st = False
-tpl_comp [d1] (d2:ds2) st = False
+tpl_comp (d1:ds1) [[d2]] (State fs ts) = case (def_lookup ts (peel (bs_to_str d2) (State fs ts))) of
+                                              [Tdef _ (Tpl t)] -> tpl_comp (d1:ds1) t (State fs ts)
+                                              _                -> False 
+tpl_comp [[d1]] (d2:ds2) (State fs ts) = case (def_lookup ts (peel (bs_to_str d1) (State fs ts))) of
+                                              [Tdef _ (Tpl t)] -> tpl_comp t (d2:ds2) (State fs ts)
+                                              _                -> False 
+                                 
 tpl_comp (d1:ds1) (d2:ds2) st = if(dbl_comp d1 d2 st)
-                                        then tpl_comp ds1 ds2 st 
+                                        then (tpl_comp ds1 ds2 st)
                                         else False
 
 --Convert single type to double.  
@@ -603,7 +611,7 @@ tpl_len_comp2 [] [] st = (st, True, "")
 tpl_len_comp2 [] x st = (st, False, "")
 tpl_len_comp2 x [] st = (st, False, "")
 tpl_len_comp2 (x:xs) ([Tplblk]:t) st = let (t11, t12) = tpl_extract t
-                                           (state1, valid1, error1) = tpl_len_comp x t11 st
+                                           (state1, valid1, error1) = (tpl_len_comp x t11 st)
                                            in if(valid1) 
                                                    then tpl_len_comp2 xs t12 state1
                                                    else (st, False, error1)
@@ -614,6 +622,19 @@ tpl_len_comp2 (x:xs) (t:ts) st = let (state1, valid1, error1) = tpl_len_comp x [
 
 --compare tuple lengths for function call and function definition. Type expansion allowed.
 tpl_len_comp :: Tuple -> [[BaseType]] -> State -> (State, Bool, String)
+tpl_len_comp (TupleValue (ETuple (TupleList (x:xs) _) _) _) ([Tplblk]:t) st = let (t11, t12) = (tpl_extract t)
+                                                                                  in let (state1, valid1, error1) = tpl_len_comp x t11 st
+                                                                                        in if(valid1) 
+                                                                                                then tpl_len_comp2 xs t12 state1
+                                                                                                else (st, False, error1) 
+tpl_len_comp (TupleValue (ETuple (TupleList x _) _) _) [[Base s]] (State fs ts) = let (Tdef _ t2) = head (def_lookup (fs ++ ts) (peel s (State fs ts)))
+                                                                                      in case t2 of
+                                                                                                (Tpl t) -> tpl_len_comp2 x t (State fs ts)
+                                                                                                _       -> (State fs ts, False, "")
+tpl_len_comp (TupleValue (ETuple (TupleList (x:xs) _) _) _) (t:ts) st = let (state1, valid1, error1) = (tpl_len_comp x [t] st)
+                                                                            in if(valid1)
+                                                                                        then (tpl_len_comp2 xs ts state1)
+                                                                                        else (st, False, error1)
 tpl_len_comp (TupleValue (ESymbol s _) _) [[t]] (State fs ts) = if(exists_in (fs ++ ts) s)
                                                                         then (State fs ts, False, "\nSymbol name " ++ s ++ " has already used in this scope")
                                                                         else (State ([Fdef s (Sgl Em) (Sgl t)] ++ fs) ts, True, "")
@@ -625,7 +646,7 @@ tpl_len_comp (TupleValue (ESymbol s _) _) t (State fs ts) = if(exists_in (fs ++ 
                                                                         else if((tpl_len t) == 1) 
                                                                                 then (State ([Fdef s (Sgl Em) (Tpl t)] ++ fs) ts, True, "")
                                                                                 else (State fs ts, False, "")
-tpl_len_comp (TupleList (x:xs) _) ([Tplblk]:t) st = let (t11, t12) = tpl_extract t
+tpl_len_comp (TupleList (x:xs) _) ([Tplblk]:t) st = let (t11, t12) = (tpl_extract t)
                                                         in let (state1, valid1, error1) = tpl_len_comp x t11 st
                                                                in if(valid1) 
                                                                        then tpl_len_comp2 xs t12 state1
@@ -634,9 +655,9 @@ tpl_len_comp (TupleList x _) [[Base s]] (State fs ts) = let (Tdef _ t2) = head (
                                                             in case t2 of
                                                                     (Tpl t) -> tpl_len_comp2 x t (State fs ts)
                                                                     _       -> (State fs ts, False, "")
-tpl_len_comp (TupleList (x:xs) _) (t:ts) st = let (state1, valid1, error1) = tpl_len_comp x [t] st
+tpl_len_comp (TupleList (x:xs) _) (t:ts) st = let (state1, valid1, error1) = (tpl_len_comp x [t] st)
                                                   in if(valid1)
-                                                          then tpl_len_comp2 xs ts state1
+                                                          then (tpl_len_comp2 xs ts state1)
                                                           else (st, False, error1)
 tpl_len_comp _ [] st = (st, False, "")                                                                         
 

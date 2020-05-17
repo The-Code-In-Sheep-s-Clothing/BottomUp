@@ -1,6 +1,7 @@
 -- asdfasdf
 type Player = {A,B}
 type PState = (Board,Player)
+type Input = Position
 
 -- Players
 --

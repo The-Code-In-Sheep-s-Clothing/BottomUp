@@ -7,25 +7,25 @@
   * if cabal is installed with apt-get you will need to add .cabal/bin to the start of the path
 
 ## Linux Install
-* ./build.sh
+* `./build.sh`
 
 ## Linux Execute
-* ./exec.sh filename
+* `./exec.sh filename`
 * Consider running the files testing.bgl, notakto.bgl and countGame1.bgl as they are working test files.
 
 ## Generic Build (For newer cabal versions)
-* cabal update
-* cabal new-build
+* `cabal update`
+* `cabal new-build`
 
 ## Generic Execute
-* cabal new-exec BottomUp <filename>
+* `cabal new-exec BottomUp <filename>`
 * Consider running the files testing.bgl, notakto.bgl and countGame1.bgl as they are working test files.
-* The command would look like cabal new-exec BottomUp test/testing.bgl
-* ghci OutputCode.hs
+* The command would look like `cabal new-exec BottomUp test/testing.bgl`
+* `ghci OutputCode.hs`
 
 ## Windows Executable Execute
-* ./BoGL-Compiler.exe <filename>
-* ghci OutputCode.hs
+* `./BoGL-Compiler.exe <filename>`
+* `ghci OutputCode.hs`
 
 ## GHCi
 Once the compiled program is in GHCi to run it execute the result function. Other functions can be tested, but these will depend on the implementation in the .bgl file.
